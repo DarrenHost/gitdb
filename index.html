@@ -2,58 +2,144 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>在线文件编辑器</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitDB 在线编辑器</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@6/lib/codemirror.css">
   <style>
-    body {margin:0;padding:15px; font-family: Arial;}
-    #tokenInput { width: 100%; padding: 10px; margin-bottom: 10px; }
-    textarea { width:100%; height:400px; padding:10px; box-sizing:border-box; }
-    button { padding:10px 20px; margin:5px; background:#000; color:#fff; border:none; cursor:pointer; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif;
+    }
+
+    body {
+      background: #f6f8fa;
+      padding: 20px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    #token {
+      flex: 1;
+      min-width: 220px;
+      padding: 10px 14px;
+      border: 1px solid #d1d9e0;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 10px 16px;
+      background: #0070f3;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #0058cc;
+    }
+
+    .editor-container {
+      border: 1px solid #d1d9e0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .cm-editor {
+      height: calc(100vh - 140px) !important;
+    }
   </style>
 </head>
+
 <body>
+  <div class="toolbar">
+    <input type="password" id="token" placeholder="请输入 GitHub 令牌（Token）">
+    <button onclick="loadFile()">加载文件</button>
+    <button onclick="saveFile()">保存到 GitHub</button>
+  </div>
 
-  <input id="tokenInput" placeholder="在这里输入你的令牌" type="password">
-  <button onclick="loadFile()">加载文件</button>
-  <button onclick="saveFile()">保存到 GitHub</button>
+  <div class="editor-container">
+    <textarea id="content" style="display: none;"></textarea>
+    <div id="editor"></div>
+  </div>
 
-  <textarea id="fileContent"></textarea>
+  <!-- 高亮编辑器库 -->
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@6/lib/codemirror.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@6/mode/htmlmixed/htmlmixed.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@6/mode/javascript/javascript.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@6/mode/css/css.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@6/mode/json/json.js"></script>
 
   <script src="./github-file-editor.js"></script>
   <script>
     let editor;
+    let cm;
+    const targetFile = "README.md";
 
-    // 配置（这里不写 token！）
     function initEditor() {
-      const token = document.getElementById('tokenInput').value;
       editor = new GitHubFileEditor({
-        token: token,
-        owner: 'DarrenHost',
-        repo: 'gitdb',
-        branch: 'main'
+        token: document.getElementById("token").value,
+        owner: "DarrenHost",
+        repo: "gitdb",
+        branch: "main",
       });
     }
 
-    // 加载文件
+    function getFileExtension(filename) {
+      return filename.slice(((filename.lastIndexOf(".") - 1) >>> 0) + 2);
+    }
+
+    function createCodeMirror(content, ext) {
+      let mode = "text/plain";
+      if (ext === "html") mode = "htmlmixed";
+      if (ext === "json") mode = "application/json";
+      if (ext === "md" || ext === "txt") mode = "text/plain";
+
+      cm = CodeMirror(document.getElementById("editor"), {
+        value: content,
+        mode: mode,
+        lineNumbers: true,
+        indentUnit: 2,
+        tabSize: 2,
+        lineWrapping: true,
+        theme: "default",
+        autofocus: true
+      });
+    }
+
     async function loadFile() {
-      initEditor();
       try {
-        const file = await editor.getFile('README.md');
-        document.getElementById('fileContent').value = file.content;
-        alert('加载成功！');
+        initEditor();
+        const res = await editor.getFile(targetFile);
+        const ext = getFileExtension(targetFile);
+        createCodeMirror(res.content, ext);
+        document.getElementById("content").value = res.content;
+        console.log("✅ 加载成功");
       } catch (e) {
-        alert('加载失败：' + e.message);
+        alert("加载失败：" + e.message);
       }
     }
 
-    // 保存文件
     async function saveFile() {
-      initEditor();
-      const content = document.getElementById('fileContent').value;
       try {
-        await editor.updateFile('README.md', content, 'web edit');
-        alert('✅ 保存成功！');
+        initEditor();
+        const newContent = cm.getValue();
+        await editor.updateFile(targetFile, newContent, "在线编辑器更新");
+        alert("✅ 保存成功！已同步到 GitHub");
       } catch (e) {
-        alert('失败：' + e.message);
+        alert("保存失败：" + e.message);
       }
     }
   </script>

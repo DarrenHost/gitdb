@@ -8,11 +8,6 @@ yarn.lock
 .env.local
 .env.*.local
 
-# 脚本文件（🔐 可能包含敏感配置）
-*.sh
-push.sh
-push-with-auth.sh
-
 # 临时文件
 *.tmp
 *.log

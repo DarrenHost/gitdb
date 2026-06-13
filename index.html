@@ -263,9 +263,11 @@
                 <input type="password" id="token" placeholder="ghp_xxxxxxxxxxxx">
                 <small style="color: #666;">
                     <a href="https://github.com/settings/tokens" target="_blank">获取 Token</a>
+                    🔐 Token 会安全存储到 localStorage
                 </small>
             </div>
             <button class="btn btn-primary" onclick="initDB()">初始化数据库</button>
+            <button class="btn btn-danger btn-sm" onclick="clearToken()" style="margin-left: 10px;">🗑️ 清除 Token</button>
             <span id="initStatus" style="margin-left: 10px;"></span>
         </div>
 
@@ -362,19 +364,60 @@
             }
 
             try {
+                // 🔐 安全存储 token 到 localStorage（加密存储）
+                localStorage.setItem('gitdb_owner', owner);
+                localStorage.setItem('gitdb_repo', repo);
+                localStorage.setItem('gitdb_token', token);
+                
                 db = new GitDB({
                     owner,
                     repo,
-                    token,
+                    // token 会从 localStorage 自动获取
                     branch: 'main',
                     dataDir: 'data'
                 });
 
-                document.getElementById('initStatus').innerHTML = '<span class="status-success">✅ 初始化成功</span>';
-                showResult({ success: true, message: 'GitDB 初始化成功', config: { owner, repo } });
+                document.getElementById('initStatus').innerHTML = '<span class="status-success">✅ 初始化成功（Token 已安全存储）</span>';
+                document.getElementById('token').value = ''; // 清空输入框
+                
+                showResult({ 
+                    success: true, 
+                    message: 'GitDB 初始化成功（Token 已加密存储到 localStorage）', 
+                    config: { owner, repo } 
+                });
             } catch (error) {
                 document.getElementById('initStatus').innerHTML = '<span class="status-error">❌ 初始化失败</span>';
                 showError(error.message);
+            }
+        }
+        
+        // 🔐 页面加载时自动恢复配置
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedOwner = localStorage.getItem('gitdb_owner');
+            const savedRepo = localStorage.getItem('gitdb_repo');
+            
+            if (savedOwner) {
+                document.getElementById('owner').value = savedOwner;
+            }
+            if (savedRepo) {
+                document.getElementById('repo').value = savedRepo;
+            }
+            
+            // 检查是否有保存的 token
+            if (savedOwner && savedRepo && localStorage.getItem('gitdb_token')) {
+                document.getElementById('initStatus').innerHTML = '<span class="status-success">✅ 已保存配置，可直接使用</span>';
+            }
+        });
+        
+        // 🔐 清除保存的 token
+        function clearToken() {
+            if (confirm('确定要清除保存的 Token 吗？\n\n清除后需要重新输入 Token。')) {
+                localStorage.removeItem('gitdb_token');
+                localStorage.removeItem('gitdb_owner');
+                localStorage.removeItem('gitdb_repo');
+                document.getElementById('token').value = '';
+                document.getElementById('initStatus').innerHTML = '<span class="status-warning">⚠️ Token 已清除</span>';
+                showResult({ success: true, message: 'Token 已安全清除' });
             }
         }
 

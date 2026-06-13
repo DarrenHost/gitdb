@@ -1,8 +1,11 @@
 /**
  * GitDB - 基于 GitHub 的轻量级 JSON 数据库
- * @version 1.0.0
+ * @version 1.1.0
  * @author DarrenHost
  * @license MIT
+ * 
+ * 🔐 安全提示：不要将 token 硬编码在代码中！
+ * 使用环境变量、.env 文件或 localStorage 安全存储
  */
 
 class GitDB {
@@ -11,24 +14,79 @@ class GitDB {
      * @param {Object} config - 配置对象
      * @param {string} config.owner - GitHub 用户名
      * @param {string} config.repo - 仓库名称
-     * @param {string} config.token - GitHub Personal Access Token
+     * @param {string} [config.token] - GitHub Token（可选，会从多处自动获取）
      * @param {string} [config.branch='main'] - 分支名称
      * @param {string} [config.dataDir='data'] - 数据目录
+     * 
+     * 🔐 Token 获取优先级：
+     * 1. config.token（直接传入）
+     * 2. process.env.GITDB_TOKEN（Node.js 环境变量）
+     * 3. window.GITDB_TOKEN（浏览器全局变量）
+     * 4. localStorage.getItem('gitdb_token')（浏览器本地存储）
+     * 5. .env 文件中的 GITDB_TOKEN（需要构建工具支持）
      */
     constructor(config) {
-        if (!config.owner || !config.repo || !config.token) {
-            throw new Error('GitDB: Missing required config (owner, repo, token)');
+        if (!config.owner || !config.repo) {
+            throw new Error('GitDB: Missing required config (owner, repo)');
         }
 
         this.owner = config.owner;
         this.repo = config.repo;
-        this.token = config.token;
         this.branch = config.branch || 'main';
         this.dataDir = config.dataDir || 'data';
+
+        // 🔐 安全获取 token（多来源）
+        this.token = this._getSecureToken(config.token);
+
+        if (!this.token) {
+            throw new Error('GitDB: Token required. Please provide token via:\n' +
+                '  1. config.token\n' +
+                '  2. process.env.GITDB_TOKEN (Node.js)\n' +
+                '  3. window.GITDB_TOKEN (Browser)\n' +
+                '  4. localStorage.getItem("gitdb_token") (Browser)\n' +
+                '\n🔐 安全提示：不要将 token 硬编码在代码中！');
+        }
 
         // 本地缓存
         this.cache = new Map();
         this.CACHE_TTL = 5 * 60 * 1000; // 5 分钟
+    }
+
+    /**
+     * 🔐 安全获取 token（多来源）
+     * @private
+     */
+    _getSecureToken(providedToken) {
+        // 1. 优先使用直接传入的 token
+        if (providedToken) {
+            return providedToken;
+        }
+
+        // 2. Node.js 环境变量
+        if (typeof process !== 'undefined' && process.env) {
+            const envToken = process.env.GITDB_TOKEN;
+            if (envToken) {
+                console.log('🔐 Token loaded from environment variable');
+                return envToken;
+            }
+        }
+
+        // 3. 浏览器全局变量
+        if (typeof window !== 'undefined' && window.GITDB_TOKEN) {
+            console.log('🔐 Token loaded from window.GITDB_TOKEN');
+            return window.GITDB_TOKEN;
+        }
+
+        // 4. localStorage（浏览器）
+        if (typeof localStorage !== 'undefined') {
+            const storedToken = localStorage.getItem('gitdb_token');
+            if (storedToken) {
+                console.log('🔐 Token loaded from localStorage');
+                return storedToken;
+            }
+        }
+
+        return null;
     }
 
     // ==================== 内部方法 ====================

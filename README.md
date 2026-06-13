@@ -255,26 +255,64 @@ db.delete({
 
 ---
 
-## 🔐 获取 GitHub Token
+## 🔐 Token 安全配置
 
-1. 访问 [GitHub Settings](https://github.com/settings/tokens)
-2. 点击 **Generate new token**
-3. 选择权限：
-   - ✅ `repo` - 完全控制仓库（必需）
-4. 生成并复制 Token
-5. 在代码中使用：
-   ```javascript
-   const db = new GitDB({
-       owner: 'your-username',
-       repo: 'your-repo',
-       token: 'ghp_xxxxxxxxxxxx'
-   });
-   ```
+**⚠️ 重要：** GitHub 会扫描并禁用使用明文 token 的项目。请使用以下安全方式！
 
-**⚠️ 安全提示:**
-- 不要将 Token 提交到代码仓库
-- 使用环境变量存储 Token
-- 定期更换 Token
+### 方式 1：环境变量（推荐）⭐⭐⭐
+
+**1. 创建 .env 文件**
+```bash
+cp .env.example .env
+# 编辑 .env 填入你的 token
+```
+
+**2. 使用方式**
+```javascript
+// Node.js 自动读取 process.env.GITDB_TOKEN
+const db = new GitDB({
+    owner: 'DarrenHost',
+    repo: 'gitdb'
+    // token 会自动从环境变量获取
+});
+```
+
+### 方式 2：localStorage（浏览器）⭐⭐⭐
+
+```javascript
+// 页面中输入 token 后自动存储
+localStorage.setItem('gitdb_token', token);
+
+// GitDB 自动读取
+const db = new GitDB({
+    owner: 'DarrenHost',
+    repo: 'gitdb'
+});
+```
+
+### 方式 3：直接传入（一次性）⭐⭐
+
+```javascript
+const db = new GitDB({
+    owner: 'DarrenHost',
+    repo: 'gitdb',
+    token: '从安全来源获取'  // 不存储，一次性使用
+});
+```
+
+### ❌ 禁止行为
+
+```javascript
+// ❌ 不要硬编码 token！
+const db = new GitDB({
+    owner: 'DarrenHost',
+    repo: 'gitdb',
+    token: 'ghp_xxx'  // 🔴 会被 GitHub 禁用！
+});
+```
+
+**📖 详细安全指南：** 查看 [TOKEN_SECURITY.md](TOKEN_SECURITY.md)
+
 
 ---
 

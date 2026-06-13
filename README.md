@@ -111,7 +111,7 @@ await db.drop({ dbName: 'users' });
 | `update()` | 更新记录 | `db.update({ dbName: 'users', query: {...}, data: {...} })` |
 | `delete()` | 删除记录 | `db.delete({ dbName: 'users', query: {...} })` |
 | `drop()` | 删除数据库 | `db.drop({ dbName: 'users' })` |
-| `listDatabases()` | 获取数据库列表 | `db.listDatabases()` |
+| `show()` | 获取数据库列表 | `db.show()` |
 
 ### 查询操作符
 

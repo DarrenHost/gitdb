@@ -568,10 +568,10 @@ class GitDB {
     }
 
     /**
-     * 获取数据库列表
+     * SHOW - 获取数据库列表
      * @returns {Promise<Array>}
      */
-    async listDatabases() {
+    async show() {
         try {
             const data = await this._githubAPI(
                 `repos/${this.owner}/${this.repo}/contents/${this.dataDir}?ref=${this.branch}`

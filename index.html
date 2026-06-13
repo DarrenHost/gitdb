@@ -569,7 +569,7 @@
             }
 
             try {
-                const result = await db.listDatabases();
+                const result = await db.show();
                 showResult({
                     success: true,
                     message: `找到 ${result.length} 个数据库`,

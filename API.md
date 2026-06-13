@@ -296,53 +296,38 @@ GitDB.drop({
 
 ---
 
-### 2.6 FIND - 查询记录（额外功能）
+### 2.6 SHOW - 显示数据库列表
 
-**功能：** 查询数据库中的记录
+**功能：** 获取所有数据库文件列表
 
 **端点：**
 ```
-GET /api/db/find
+GET /api/db/show
 ```
 
-**请求参数：**
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `dbName` | string | ✅ | 数据库名称 |
-| `query` | object | ❌ | 查询条件（可选） |
-| `limit` | number | ❌ | 返回数量限制 |
-| `skip` | number | ❌ | 跳过记录数 |
+**请求参数：** 无
 
 **请求示例：**
-
-**查询所有记录：**
 ```javascript
-GitDB.find({ dbName: 'users' });
-```
-
-**条件查询：**
-```javascript
-GitDB.find({
-    dbName: 'users',
-    query: { age: { $gte: 18 } },
-    limit: 10,
-    skip: 0
-});
+const databases = await db.show();
 ```
 
 **响应格式：**
 ```json
 {
     "success": true,
-    "data": {
-        "dbName": "users",
-        "totalCount": 100,
-        "records": [
-            { "id": 1, "name": "John", "email": "john@example.com" },
-            { "id": 2, "name": "Jane", "email": "jane@example.com" }
-        ]
-    }
+    "data": [
+        {
+            "name": "users",
+            "path": "data/users.json",
+            "size": 1024
+        },
+        {
+            "name": "products",
+            "path": "data/products.json",
+            "size": 2048
+        }
+    ]
 }
 ```
 

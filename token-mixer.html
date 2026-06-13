@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitDB Token 混淆工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #24292e;
+            --secondary: #0366d6;
+            --success: #28a745;
+            --danger: #d73a49;
+            --warning: #ff9800;
+            --bg: #f6f8fa;
+            --border: #e1e4e8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--primary);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 30px 20px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: var(--secondary);
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #035fc7;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .result-box {
+            background: #f6f8fa;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            word-break: break-all;
+            margin-top: 15px;
+        }
+
+        .result-box.success {
+            border-color: var(--success);
+            background: #f0fff4;
+        }
+
+        .result-box.error {
+            border-color: var(--danger);
+            background: #ffeef0;
+        }
+
+        .info-box {
+            background: #fff5b1;
+            border: 1px solid #e1c400;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .info-box strong {
+            color: #735c00;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+
+        code {
+            background: #f6f8fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 GitDB Token 混淆工具</h1>
+            <p>将 GitHub Token 混淆成非明文格式，避免被 GitHub 扫描检测</p>
+        </header>
+
+        <div class="info-box">
+            <strong>⚠️ 重要提示：</strong>
+            <p>这只是一个简单的字符串混淆，<strong>不是加密</strong>！目的是防止 GitHub 自动扫描检测到明文 token。</p>
+            <p>混淆后的 token 格式：<code>gitdb_xxxxxxxxxxxx</code></p>
+        </div>
+
+        <!-- 混淆工具 -->
+        <div class="card">
+            <h2>
+                🔒 Token 混淆
+                <span class="badge badge-warning">生成混淆 Token</span>
+            </h2>
+            
+            <div class="form-group">
+                <label for="inputToken">GitHub Token (明文)</label>
+                <input 
+                    type="password" 
+                    id="inputToken" 
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                    autocomplete="off"
+                >
+                <small style="color: #666;">
+                    获取 Token: 
+                    <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings</a>
+                </small>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="mixToken()">生成混淆 Token</button>
+                <button class="btn btn-success" onclick="copyToClipboard('mixedResult')">复制结果</button>
+            </div>
+
+            <div class="result-box" id="mixedResult" style="display: none;"></div>
+        </div>
+
+        <!-- 解混淆工具 -->
+        <div class="card">
+            <h2>
+                🔓 Token 解混淆
+                <span class="badge badge-success">还原原始 Token</span>
+            </h2>
+            
+            <div class="form-group">
+                <label for="mixedToken">混淆后的 Token</label>
+                <input 
+                    type="text" 
+                    id="mixedToken" 
+                    placeholder="gitdb_xxxxxxxxxxxxxxxxxxxx"
+                >
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="unmixToken()">还原原始 Token</button>
+                <button class="btn btn-success" onclick="copyToClipboard('unmixedResult')">复制结果</button>
+            </div>
+
+            <div class="result-box" id="unmixedResult" style="display: none;"></div>
+        </div>
+
+        <!-- 使用说明 -->
+        <div class="card">
+            <h2>📖 使用说明</h2>
+            
+            <h3 style="font-size: 16px; margin: 15px 0 10px;">步骤 1: 生成混淆 Token</h3>
+            <ol style="margin-left: 20px; margin-bottom: 15px;">
+                <li>在上方输入你的 GitHub Token</li>
+                <li>点击"生成混淆 Token"</li>
+                <li>复制生成的混淆 Token（格式：<code>gitdb_xxx</code>）</li>
+            </ol>
+
+            <h3 style="font-size: 16px; margin: 15px 0 10px;">步骤 2: 配置到项目</h3>
+            <p style="margin-bottom: 15px;">
+                将混淆后的 Token 配置到你的项目中：
+            </p>
+            <div class="result-box">
+// 方式 1: 直接配置
+const db = new GitDB({
+    owner: 'DarrenHost',
+    repo: 'gitdb',
+    token: 'gitdb_xxxxxxxxxxxx'  // 混淆后的 token
+});
+
+// 方式 2: 环境变量
+window.GITDB_TOKEN = 'gitdb_xxxxxxxxxxxx';
+            </div>
+
+            <h3 style="font-size: 16px; margin: 15px 0 10px;">步骤 3: 自动解混淆</h3>
+            <p style="margin-bottom: 15px;">
+                GitDB 会自动检测并解混淆 token，无需手动处理！
+            </p>
+        </div>
+
+        <!-- 安全提示 -->
+        <div class="card">
+            <h2>🔐 安全提示</h2>
+            <ul style="margin-left: 20px; line-height: 2;">
+                <li>混淆后的 token 仍然具有完整权限，请妥善保管</li>
+                <li>不要将混淆工具页面部署到公开环境</li>
+                <li>定期更换 token，建议每 3-6 个月</li>
+                <li>使用 Fine-grained Token，只授予必要权限</li>
+                <li>如果 token 泄露，立即在 GitHub 撤销</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="token-mixer.js"></script>
+    <script>
+        const mixer = new TokenMixer();
+
+        function mixToken() {
+            const input = document.getElementById('inputToken');
+            const resultBox = document.getElementById('mixedResult');
+            
+            try {
+                const token = input.value.trim();
+                if (!token) {
+                    throw new Error('请输入 GitHub Token');
+                }
+                
+                if (!token.startsWith('ghp_') && !token.startsWith('gho_')) {
+                    throw new Error('Token 格式不正确，应该以 ghp_ 或 gho_ 开头');
+                }
+                
+                const mixed = mixer.mix(token);
+                
+                resultBox.textContent = mixed;
+                resultBox.className = 'result-box success';
+                resultBox.style.display = 'block';
+                
+                input.value = ''; // 清空输入
+            } catch (error) {
+                resultBox.textContent = '❌ 错误：' + error.message;
+                resultBox.className = 'result-box error';
+                resultBox.style.display = 'block';
+            }
+        }
+
+        function unmixToken() {
+            const input = document.getElementById('mixedToken');
+            const resultBox = document.getElementById('unmixedResult');
+            
+            try {
+                const mixed = input.value.trim();
+                if (!mixed) {
+                    throw new Error('请输入混淆后的 Token');
+                }
+                
+                if (!mixer.isMixed(mixed)) {
+                    throw new Error('这不是一个有效的混淆 Token（应该以 gitdb_ 开头）');
+                }
+                
+                const original = mixer.unmix(mixed);
+                
+                resultBox.textContent = original;
+                resultBox.className = 'result-box success';
+                resultBox.style.display = 'block';
+                
+                input.value = ''; // 清空输入
+            } catch (error) {
+                resultBox.textContent = '❌ 错误：' + error.message;
+                resultBox.className = 'result-box error';
+                resultBox.style.display = 'block';
+            }
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            if (element.style.display === 'none' || !element.textContent) {
+                alert('先生成结果再复制！');
+                return;
+            }
+            
+            navigator.clipboard.writeText(element.textContent).then(() => {
+                alert('✅ 已复制到剪贴板！');
+            }).catch(err => {
+                alert('❌ 复制失败：' + err);
+            });
+        }
+
+        // 检查 URL 参数
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('token')) {
+            document.getElementById('mixedToken').value = urlParams.get('token');
+            unmixToken();
+        }
+    </script>
+</body>
+</html>

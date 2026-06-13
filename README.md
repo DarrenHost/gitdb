@@ -259,12 +259,40 @@ db.delete({
 
 **⚠️ 重要：** GitHub 会扫描并禁用使用明文 token 的项目。请使用以下安全方式！
 
-### 方式 1：环境变量（推荐）⭐⭐⭐
+### 🎯 推荐方案：Token 混淆
+
+GitDB 提供 Token 混淆工具，将明文 token 转换成非明文格式，避免被 GitHub 扫描检测。
+
+**1. 打开混淆工具**
+```bash
+# 本地打开
+open token-mixer.html
+
+# 或访问在线版本（如果部署）
+https://your-domain.com/token-mixer.html
+```
+
+**2. 生成混淆 Token**
+- 输入 GitHub Token（如：`ghp_xxx`）
+- 点击"生成混淆 Token"
+- 复制生成的混淆 Token（格式：`gitdb_xxx`）
+
+**3. 配置到项目**
+```javascript
+// 混淆后的 token 会自动解混淆
+const db = new GitDB({
+    owner: 'DarrenHost',
+    repo: 'gitdb',
+    token: 'gitdb_xxxxxxxxxxxx'  // 混淆后的 token
+});
+```
+
+### 方式 1：环境变量（Node.js）⭐⭐⭐
 
 **1. 创建 .env 文件**
 ```bash
 cp .env.example .env
-# 编辑 .env 填入你的 token
+# 编辑 .env 填入你的 token（可以是混淆后的）
 ```
 
 **2. 使用方式**
@@ -273,17 +301,17 @@ cp .env.example .env
 const db = new GitDB({
     owner: 'DarrenHost',
     repo: 'gitdb'
-    // token 会自动从环境变量获取
+    // token 会自动从环境变量获取并解混淆
 });
 ```
 
 ### 方式 2：localStorage（浏览器）⭐⭐⭐
 
 ```javascript
-// 页面中输入 token 后自动存储
-localStorage.setItem('gitdb_token', token);
+// 页面中输入 token 后自动存储（支持混淆 token）
+localStorage.setItem('gitdb_token', 'gitdb_xxx');
 
-// GitDB 自动读取
+// GitDB 自动读取并解混淆
 const db = new GitDB({
     owner: 'DarrenHost',
     repo: 'gitdb'
@@ -303,7 +331,7 @@ const db = new GitDB({
 ### ❌ 禁止行为
 
 ```javascript
-// ❌ 不要硬编码 token！
+// ❌ 不要硬编码明文 token！
 const db = new GitDB({
     owner: 'DarrenHost',
     repo: 'gitdb',

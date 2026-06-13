@@ -53,40 +53,56 @@ class GitDB {
     }
 
     /**
-     * 🔐 安全获取 token（多来源）
+     * 🔐 安全获取 token（多来源 + 自动解混淆）
      * @private
      */
     _getSecureToken(providedToken) {
+        let token = null;
+        
         // 1. 优先使用直接传入的 token
         if (providedToken) {
-            return providedToken;
+            token = providedToken;
         }
-
+        
         // 2. Node.js 环境变量
-        if (typeof process !== 'undefined' && process.env) {
+        if (!token && typeof process !== 'undefined' && process.env) {
             const envToken = process.env.GITDB_TOKEN;
             if (envToken) {
                 console.log('🔐 Token loaded from environment variable');
-                return envToken;
+                token = envToken;
             }
         }
-
+        
         // 3. 浏览器全局变量
-        if (typeof window !== 'undefined' && window.GITDB_TOKEN) {
+        if (!token && typeof window !== 'undefined' && window.GITDB_TOKEN) {
             console.log('🔐 Token loaded from window.GITDB_TOKEN');
-            return window.GITDB_TOKEN;
+            token = window.GITDB_TOKEN;
         }
-
+        
         // 4. localStorage（浏览器）
-        if (typeof localStorage !== 'undefined') {
+        if (!token && typeof localStorage !== 'undefined') {
             const storedToken = localStorage.getItem('gitdb_token');
             if (storedToken) {
                 console.log('🔐 Token loaded from localStorage');
-                return storedToken;
+                token = storedToken;
             }
         }
-
-        return null;
+        
+        // 🔐 自动解混淆 token
+        if (token && typeof window !== 'undefined' && window.TokenMixer) {
+            const mixer = new window.TokenMixer();
+            if (mixer.isMixed(token)) {
+                console.log('🔐 Auto-unmixing token...');
+                try {
+                    token = mixer.unmix(token);
+                    console.log('✅ Token successfully unmixed');
+                } catch (error) {
+                    console.error('❌ Failed to unmix token:', error.message);
+                }
+            }
+        }
+        
+        return token;
     }
 
     // ==================== 内部方法 ====================

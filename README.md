@@ -166,14 +166,14 @@ db.find({
 
 ```json
 {
-  "_meta": {
+  "_meta_": {
     "name": "users",
     "description": "用户信息数据库",
     "schema": null,
     "createdAt": "2026-06-13T10:00:00Z",
     "updatedAt": "2026-06-13T10:05:00Z"
   },
-  "_data": [
+  "_data_": [
     {
       "id": 1,
       "name": "John Doe",

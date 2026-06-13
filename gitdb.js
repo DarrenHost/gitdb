@@ -295,7 +295,7 @@ class GitDB {
                 name,
                 filePath,
                 commitSha: result.commit.sha,
-                createdAt: initialData._meta.createdAt
+                createdAt: initialData._meta_.createdAt
             }
         };
     }
@@ -328,7 +328,7 @@ class GitDB {
 
         // 生成 ID
         if (autoId) {
-            const existingIds = file._data.map(r => r.id).filter(id => id !== undefined);
+            const existingIds = file._data_.map(r => r.id).filter(id => id !== undefined);
             recordsToAdd.forEach((record, index) => {
                 if (record.id === undefined) {
                     record.id = this._generateId(existingIds) + index;
@@ -337,8 +337,8 @@ class GitDB {
         }
 
         // 添加记录
-        file._data.push(...recordsToAdd);
-        file._meta.updatedAt = new Date().toISOString();
+        file._data_.push(...recordsToAdd);
+        file._meta_.updatedAt = new Date().toISOString();
 
         const result = await this._commitFile(
             filePath,
@@ -355,7 +355,7 @@ class GitDB {
                 addedCount: recordsToAdd.length,
                 ids: recordsToAdd.map(r => r.id),
                 commitSha: result.commit.sha,
-                updatedAt: file._meta.updatedAt
+                updatedAt: file._meta_.updatedAt
             }
         };
     }
@@ -389,7 +389,7 @@ class GitDB {
 
         // 查找并更新记录
         let updatedCount = 0;
-        for (const record of file._data) {
+        for (const record of file._data_) {
             if (this._matchesQuery(record, query)) {
                 Object.assign(record, data);
                 updatedCount++;
@@ -402,7 +402,7 @@ class GitDB {
             throw new Error('RECORD_NOT_FOUND: No matching records found');
         }
 
-        file._meta.updatedAt = new Date().toISOString();
+        file._meta_.updatedAt = new Date().toISOString();
 
         const result = await this._commitFile(
             filePath,
@@ -418,7 +418,7 @@ class GitDB {
                 name,
                 updatedCount,
                 commitSha: result.commit.sha,
-                updatedAt: file._meta.updatedAt
+                updatedAt: file._meta_.updatedAt
             }
         };
     }
@@ -447,8 +447,8 @@ class GitDB {
         }
 
         // 查找并删除记录
-        const initialLength = file._data.length;
-        file._data = file._data.filter(record => {
+        const initialLength = file._data_.length;
+        file._data_ = file._data_.filter(record => {
             if (this._matchesQuery(record, query)) {
                 if (!multi) {
                     multi = false; // 只删除第一条
@@ -459,13 +459,13 @@ class GitDB {
             return true;
         });
 
-        const deletedCount = initialLength - file._data.length;
+        const deletedCount = initialLength - file._data_.length;
 
         if (deletedCount === 0) {
             throw new Error('RECORD_NOT_FOUND: No matching records found');
         }
 
-        file._meta.updatedAt = new Date().toISOString();
+        file._meta_.updatedAt = new Date().toISOString();
 
         const result = await this._commitFile(
             filePath,
@@ -481,7 +481,7 @@ class GitDB {
                 name,
                 deletedCount,
                 commitSha: result.commit.sha,
-                updatedAt: file._meta.updatedAt
+                updatedAt: file._meta_.updatedAt
             }
         };
     }
@@ -553,7 +553,7 @@ class GitDB {
         }
 
         // 过滤记录
-        let records = file._data.filter(record => this._matchesQuery(record, query));
+        let records = file._data_.filter(record => this._matchesQuery(record, query));
 
         const totalCount = records.length;
 

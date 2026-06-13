@@ -60,13 +60,13 @@ const db = new GitDB({
 ```javascript
 // 创建数据库
 await db.create({
-    dbName: 'users',
+    name: 'users',
     description: '用户信息数据库'
 });
 
 // 添加记录
 await db.add({
-    dbName: 'users',
+    name: 'users',
     data: {
         name: 'John Doe',
         email: 'john@example.com',
@@ -76,25 +76,25 @@ await db.add({
 
 // 查询记录
 const result = await db.find({
-    dbName: 'users',
+    name: 'users',
     query: { age: { $gte: 18 } }
 });
 
 // 更新记录
 await db.update({
-    dbName: 'users',
+    name: 'users',
     query: { id: 1 },
     data: { age: 26 }
 });
 
 // 删除记录
 await db.delete({
-    dbName: 'users',
+    name: 'users',
     query: { id: 1 }
 });
 
 // 删除数据库
-await db.drop({ dbName: 'users' });
+await db.drop({ name: 'users' });
 ```
 
 ---
@@ -105,12 +105,12 @@ await db.drop({ dbName: 'users' });
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
-| `create()` | 创建数据库 | `db.create({ dbName: 'users' })` |
-| `add()` | 添加记录 | `db.add({ dbName: 'users', data: {...} })` |
-| `find()` | 查询记录 | `db.find({ dbName: 'users', query: {...} })` |
-| `update()` | 更新记录 | `db.update({ dbName: 'users', query: {...}, data: {...} })` |
-| `delete()` | 删除记录 | `db.delete({ dbName: 'users', query: {...} })` |
-| `drop()` | 删除数据库 | `db.drop({ dbName: 'users' })` |
+| `create()` | 创建数据库 | `db.create({ name: 'users' })` |
+| `add()` | 添加记录 | `db.add({ name: 'users', data: {...} })` |
+| `find()` | 查询记录 | `db.find({ name: 'users', query: {...} })` |
+| `update()` | 更新记录 | `db.update({ name: 'users', query: {...}, data: {...} })` |
+| `delete()` | 删除记录 | `db.delete({ name: 'users', query: {...} })` |
+| `drop()` | 删除数据库 | `db.drop({ name: 'users' })` |
 | `show()` | 获取数据库列表 | `db.show()` |
 
 ### 查询操作符
@@ -136,19 +136,19 @@ await db.drop({ dbName: 'users' });
 ```javascript
 // 查询年龄大于 18 岁的用户
 db.find({
-    dbName: 'users',
+    name: 'users',
     query: { age: { $gt: 18 } }
 });
 
 // 查询状态为 active 或 pending 的用户
 db.find({
-    dbName: 'users',
+    name: 'users',
     query: { status: { $in: ['active', 'pending'] } }
 });
 
 // 组合查询
 db.find({
-    dbName: 'users',
+    name: 'users',
     query: {
         $and: [
             { age: { $gte: 18 } },
@@ -209,7 +209,7 @@ db.find({
 #### create()
 ```javascript
 db.create({
-    dbName: 'users',          // 必填：数据库名称
+    name: 'users',          // 必填：数据库名称
     description: '用户数据库',  // 可选：描述
     schema: {}                // 可选：数据结构定义
 });
@@ -218,7 +218,7 @@ db.create({
 #### add()
 ```javascript
 db.add({
-    dbName: 'users',          // 必填：数据库名称
+    name: 'users',          // 必填：数据库名称
     data: {},                 // 必填：数据（对象或数组）
     autoId: true              // 可选：是否自动添加 ID
 });
@@ -227,7 +227,7 @@ db.add({
 #### find()
 ```javascript
 db.find({
-    dbName: 'users',          // 必填：数据库名称
+    name: 'users',          // 必填：数据库名称
     query: {},                // 可选：查询条件
     limit: 10,                // 可选：返回数量限制
     skip: 0                   // 可选：跳过记录数
@@ -237,7 +237,7 @@ db.find({
 #### update()
 ```javascript
 db.update({
-    dbName: 'users',          // 必填：数据库名称
+    name: 'users',          // 必填：数据库名称
     query: {},                // 必填：查询条件
     data: {},                 // 必填：要更新的数据
     multi: false              // 可选：是否更新多条
@@ -247,7 +247,7 @@ db.update({
 #### delete()
 ```javascript
 db.delete({
-    dbName: 'users',          // 必填：数据库名称
+    name: 'users',          // 必填：数据库名称
     query: {},                // 必填：查询条件
     multi: false              // 可选：是否删除多条
 });
@@ -333,11 +333,11 @@ const db = new GitDB({
 
 ```javascript
 // 创建文章数据库
-await db.create({ dbName: 'posts' });
+await db.create({ name: 'posts' });
 
 // 添加文章
 await db.add({
-    dbName: 'posts',
+    name: 'posts',
     data: {
         title: '我的第一篇文章',
         content: 'Hello World!',
@@ -348,7 +348,7 @@ await db.add({
 
 // 查询已发布的文章
 const posts = await db.find({
-    dbName: 'posts',
+    name: 'posts',
     query: { published: true }
 });
 ```
@@ -358,7 +358,7 @@ const posts = await db.find({
 ```javascript
 // 批量添加用户
 await db.add({
-    dbName: 'users',
+    name: 'users',
     data: [
         { name: 'Alice', email: 'alice@example.com', role: 'admin' },
         { name: 'Bob', email: 'bob@example.com', role: 'user' },
@@ -368,20 +368,20 @@ await db.add({
 
 // 查询管理员
 const admins = await db.find({
-    dbName: 'users',
+    name: 'users',
     query: { role: 'admin' }
 });
 
 // 更新用户角色
 await db.update({
-    dbName: 'users',
+    name: 'users',
     query: { email: 'bob@example.com' },
     data: { role: 'admin' }
 });
 
 // 删除用户
 await db.delete({
-    dbName: 'users',
+    name: 'users',
     query: { email: 'charlie@example.com' }
 });
 ```
@@ -391,7 +391,7 @@ await db.delete({
 ```javascript
 // 添加产品
 await db.add({
-    dbName: 'products',
+    name: 'products',
     data: {
         name: 'iPhone 15',
         price: 7999,
@@ -402,13 +402,13 @@ await db.add({
 
 // 查询库存不足的产品
 const lowStock = await db.find({
-    dbName: 'products',
+    name: 'products',
     query: { stock: { $lt: 10 } }
 });
 
 // 更新库存
 await db.update({
-    dbName: 'products',
+    name: 'products',
     query: { name: 'iPhone 15' },
     data: { stock: 99 }
 });

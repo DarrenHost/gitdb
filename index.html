@@ -427,16 +427,16 @@
                 return;
             }
 
-            const dbName = document.getElementById('createDbName').value;
+            const name = document.getElementById('createDbName').value;
             const description = document.getElementById('createDesc').value;
 
-            if (!dbName) {
+            if (!name) {
                 showError('请填写数据库名称');
                 return;
             }
 
             try {
-                const result = await db.create({ dbName, description });
+                const result = await db.create({ name, description });
                 showResult(result);
             } catch (error) {
                 showError(error.message);
@@ -449,17 +449,17 @@
                 return;
             }
 
-            const dbName = document.getElementById('addDbName').value;
+            const name = document.getElementById('addDbName').value;
             const dataStr = document.getElementById('addData').value;
 
-            if (!dbName || !dataStr) {
+            if (!name || !dataStr) {
                 showError('请填写数据库名称和数据');
                 return;
             }
 
             try {
                 const data = JSON.parse(dataStr);
-                const result = await db.add({ dbName, data });
+                const result = await db.add({ name, data });
                 showResult(result);
             } catch (error) {
                 showError(error.message);
@@ -472,17 +472,17 @@
                 return;
             }
 
-            const dbName = document.getElementById('findDbName').value;
+            const name = document.getElementById('findDbName').value;
             const queryStr = document.getElementById('findQuery').value;
 
-            if (!dbName) {
+            if (!name) {
                 showError('请填写数据库名称');
                 return;
             }
 
             try {
                 const query = queryStr ? JSON.parse(queryStr) : null;
-                const result = await db.find({ dbName, query });
+                const result = await db.find({ name, query });
                 showResult(result);
             } catch (error) {
                 showError(error.message);
@@ -495,11 +495,11 @@
                 return;
             }
 
-            const dbName = document.getElementById('updateDbName').value;
+            const name = document.getElementById('updateDbName').value;
             const queryStr = document.getElementById('updateQuery').value;
             const dataStr = document.getElementById('updateData').value;
 
-            if (!dbName || !queryStr || !dataStr) {
+            if (!name || !queryStr || !dataStr) {
                 showError('请填写完整信息');
                 return;
             }
@@ -507,7 +507,7 @@
             try {
                 const query = JSON.parse(queryStr);
                 const data = JSON.parse(dataStr);
-                const result = await db.update({ dbName, query, data });
+                const result = await db.update({ name, query, data });
                 showResult(result);
             } catch (error) {
                 showError(error.message);
@@ -520,17 +520,17 @@
                 return;
             }
 
-            const dbName = document.getElementById('deleteDbName').value;
+            const name = document.getElementById('deleteDbName').value;
             const queryStr = document.getElementById('deleteQuery').value;
 
-            if (!dbName || !queryStr) {
+            if (!name || !queryStr) {
                 showError('请填写数据库名称和查询条件');
                 return;
             }
 
             try {
                 const query = JSON.parse(queryStr);
-                const result = await db.delete({ dbName, query });
+                const result = await db.delete({ name, query });
                 showResult(result);
             } catch (error) {
                 showError(error.message);
@@ -543,19 +543,19 @@
                 return;
             }
 
-            const dbName = document.getElementById('dropDbName').value;
+            const name = document.getElementById('dropDbName').value;
 
-            if (!dbName) {
+            if (!name) {
                 showError('请填写数据库名称');
                 return;
             }
 
-            if (!confirm(`确定要删除数据库 "${dbName}" 吗？此操作不可恢复！`)) {
+            if (!confirm(`确定要删除数据库 "${name}" 吗？此操作不可恢复！`)) {
                 return;
             }
 
             try {
-                const result = await db.drop({ dbName });
+                const result = await db.drop({ name });
                 showResult(result);
             } catch (error) {
                 showError(error.message);

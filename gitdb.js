@@ -235,17 +235,17 @@ class GitDB {
     /**
      * CREATE - 创建数据库文件
      * @param {Object} options
-     * @param {string} options.dbName - 数据库名称
+     * @param {string} options.name - 数据库名称
      * @param {string} [options.description] - 描述
      * @param {Object} [options.schema] - 数据结构定义
      * @returns {Promise<Object>}
      */
-    async create({ dbName, description = '', schema = null }) {
-        if (!dbName) {
-            throw new Error('GitDB.create: dbName is required');
+    async create({ name, description = '', schema = null }) {
+        if (!name) {
+            throw new Error('GitDB.create: name is required');
         }
 
-        const filePath = `${this.dataDir}/${dbName}.json`;
+        const filePath = `${this.dataDir}/${name}.json`;
 
         // 检查是否已存在
         const existing = await this._getFileContent(filePath);
@@ -256,7 +256,7 @@ class GitDB {
         // 创建初始数据
         const initialData = {
             _meta: {
-                name: dbName,
+                name,
                 description,
                 schema,
                 createdAt: new Date().toISOString(),
@@ -269,14 +269,14 @@ class GitDB {
             filePath,
             initialData,
             null,
-            `Create database: ${dbName}`
+            `Create database: ${name}`
         );
 
         return {
             success: true,
             message: '数据库创建成功',
             data: {
-                dbName,
+                name,
                 filePath,
                 commitSha: result.commit.sha,
                 createdAt: initialData._meta.createdAt
@@ -287,20 +287,20 @@ class GitDB {
     /**
      * ADD - 添加记录
      * @param {Object} options
-     * @param {string} options.dbName - 数据库名称
+     * @param {string} options.name - 数据库名称
      * @param {Object|Array} options.data - 要添加的数据
      * @param {boolean} [options.autoId=true] - 是否自动添加 ID
      * @returns {Promise<Object>}
      */
-    async add({ dbName, data, autoId = true }) {
-        if (!dbName) {
-            throw new Error('GitDB.add: dbName is required');
+    async add({ name, data, autoId = true }) {
+        if (!name) {
+            throw new Error('GitDB.add: name is required');
         }
         if (!data) {
             throw new Error('GitDB.add: data is required');
         }
 
-        const filePath = `${this.dataDir}/${dbName}.json`;
+        const filePath = `${this.dataDir}/${name}.json`;
         const file = await this._getFileContent(filePath);
 
         if (!file) {
@@ -328,14 +328,14 @@ class GitDB {
             filePath,
             file,
             file.sha,
-            `Add ${recordsToAdd.length} record(s) to ${dbName}`
+            `Add ${recordsToAdd.length} record(s) to ${name}`
         );
 
         return {
             success: true,
             message: '记录添加成功',
             data: {
-                dbName,
+                name,
                 addedCount: recordsToAdd.length,
                 ids: recordsToAdd.map(r => r.id),
                 commitSha: result.commit.sha,
@@ -347,13 +347,13 @@ class GitDB {
     /**
      * UPDATE - 更新记录
      * @param {Object} options
-     * @param {string} options.dbName - 数据库名称
+     * @param {string} options.name - 数据库名称
      * @param {Object} options.query - 查询条件
      * @param {Object} options.data - 要更新的数据
      * @param {boolean} [options.multi=false] - 是否更新多条
      * @returns {Promise<Object>}
      */
-    async update({ dbName, query, data, multi = false }) {
+    async update({ name, query, data, multi = false }) {
         if (!dbName) {
             throw new Error('GitDB.update: dbName is required');
         }
@@ -364,7 +364,7 @@ class GitDB {
             throw new Error('GitDB.update: data is required');
         }
 
-        const filePath = `${this.dataDir}/${dbName}.json`;
+        const filePath = `${this.dataDir}/${name}.json`;
         const file = await this._getFileContent(filePath);
 
         if (!file) {
@@ -399,7 +399,7 @@ class GitDB {
             success: true,
             message: '记录更新成功',
             data: {
-                dbName,
+                name,
                 updatedCount,
                 commitSha: result.commit.sha,
                 updatedAt: file._meta.updatedAt
@@ -410,12 +410,12 @@ class GitDB {
     /**
      * DELETE - 删除记录
      * @param {Object} options
-     * @param {string} options.dbName - 数据库名称
+     * @param {string} options.name - 数据库名称
      * @param {Object} options.query - 查询条件
      * @param {boolean} [options.multi=false] - 是否删除多条
      * @returns {Promise<Object>}
      */
-    async delete({ dbName, query, multi = false }) {
+    async delete({ name, query, multi = false }) {
         if (!dbName) {
             throw new Error('GitDB.delete: dbName is required');
         }
@@ -423,7 +423,7 @@ class GitDB {
             throw new Error('GitDB.delete: query is required');
         }
 
-        const filePath = `${this.dataDir}/${dbName}.json`;
+        const filePath = `${this.dataDir}/${name}.json`;
         const file = await this._getFileContent(filePath);
 
         if (!file) {
@@ -462,7 +462,7 @@ class GitDB {
             success: true,
             message: '记录删除成功',
             data: {
-                dbName,
+                name,
                 deletedCount,
                 commitSha: result.commit.sha,
                 updatedAt: file._meta.updatedAt
@@ -473,7 +473,7 @@ class GitDB {
     /**
      * DROP - 删除数据库文件
      * @param {Object} options
-     * @param {string} options.dbName - 数据库名称
+     * @param {string} options.name - 数据库名称
      * @returns {Promise<Object>}
      */
     async drop({ dbName }) {
@@ -481,7 +481,7 @@ class GitDB {
             throw new Error('GitDB.drop: dbName is required');
         }
 
-        const filePath = `${this.dataDir}/${dbName}.json`;
+        const filePath = `${this.dataDir}/${name}.json`;
         const file = await this._getFileContent(filePath);
 
         if (!file) {
@@ -507,7 +507,7 @@ class GitDB {
             success: true,
             message: '数据库已删除',
             data: {
-                dbName,
+                name,
                 filePath,
                 commitSha: result.commit.sha,
                 deletedAt: new Date().toISOString()
@@ -518,18 +518,18 @@ class GitDB {
     /**
      * FIND - 查询记录
      * @param {Object} options
-     * @param {string} options.dbName - 数据库名称
+     * @param {string} options.name - 数据库名称
      * @param {Object} [options.query] - 查询条件
      * @param {number} [options.limit] - 返回数量限制
      * @param {number} [options.skip] - 跳过记录数
      * @returns {Promise<Object>}
      */
-    async find({ dbName, query = null, limit = null, skip = 0 }) {
-        if (!dbName) {
-            throw new Error('GitDB.find: dbName is required');
+    async find({ name, query = null, limit = null, skip = 0 }) {
+        if (!name) {
+            throw new Error('GitDB.find: name is required');
         }
 
-        const filePath = `${this.dataDir}/${dbName}.json`;
+        const filePath = `${this.dataDir}/${name}.json`;
         const file = await this._getFileContent(filePath);
 
         if (!file) {
@@ -552,7 +552,7 @@ class GitDB {
         return {
             success: true,
             data: {
-                dbName,
+                name,
                 totalCount,
                 returnedCount: records.length,
                 records

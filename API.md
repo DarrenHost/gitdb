@@ -46,14 +46,14 @@ POST /api/db/create
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `dbName` | string | ✅ | 数据库名称（不含 .json） |
+| `name` | string | ✅ | 数据库名称（不含 .json） |
 | `description` | string | ❌ | 数据库描述 |
 | `schema` | object | ❌ | 数据结构定义（可选） |
 
 **请求示例：**
 ```javascript
 GitDB.create({
-    dbName: 'users',
+    name: 'users',
     description: '用户信息数据库',
     schema: {
         id: 'number',
@@ -70,7 +70,7 @@ GitDB.create({
     "success": true,
     "message": "数据库创建成功",
     "data": {
-        "dbName": "users",
+        "name": "users",
         "filePath": "data/users.json",
         "commitSha": "abc123...",
         "createdAt": "2026-06-13T10:00:00Z"
@@ -102,7 +102,7 @@ POST /api/db/add
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `dbName` | string | ✅ | 数据库名称 |
+| `name` | string | ✅ | 数据库名称 |
 | `data` | object\|array | ✅ | 要添加的数据（单条或数组） |
 | `autoId` | boolean | ❌ | 是否自动添加 ID（默认 true） |
 
@@ -111,7 +111,7 @@ POST /api/db/add
 **添加单条记录：**
 ```javascript
 GitDB.add({
-    dbName: 'users',
+    name: 'users',
     data: {
         name: 'John Doe',
         email: 'john@example.com',
@@ -123,7 +123,7 @@ GitDB.add({
 **添加多条记录：**
 ```javascript
 GitDB.add({
-    dbName: 'users',
+    name: 'users',
     data: [
         { name: 'Alice', email: 'alice@example.com' },
         { name: 'Bob', email: 'bob@example.com' }
@@ -137,7 +137,7 @@ GitDB.add({
     "success": true,
     "message": "记录添加成功",
     "data": {
-        "dbName": "users",
+        "name": "users",
         "addedCount": 1,
         "ids": [3],
         "commitSha": "def456...",
@@ -161,7 +161,7 @@ PUT /api/db/update
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `dbName` | string | ✅ | 数据库名称 |
+| `name` | string | ✅ | 数据库名称 |
 | `query` | object | ✅ | 查询条件 |
 | `data` | object | ✅ | 要更新的数据 |
 | `multi` | boolean | ❌ | 是否更新多条（默认 false） |
@@ -171,7 +171,7 @@ PUT /api/db/update
 **根据 ID 更新：**
 ```javascript
 GitDB.update({
-    dbName: 'users',
+    name: 'users',
     query: { id: 1 },
     data: {
         name: 'John Smith',
@@ -183,7 +183,7 @@ GitDB.update({
 **根据条件更新多条：**
 ```javascript
 GitDB.update({
-    dbName: 'users',
+    name: 'users',
     query: { age: { $lt: 18 } },
     data: { status: 'minor' },
     multi: true
@@ -196,7 +196,7 @@ GitDB.update({
     "success": true,
     "message": "记录更新成功",
     "data": {
-        "dbName": "users",
+        "name": "users",
         "updatedCount": 1,
         "commitSha": "ghi789...",
         "updatedAt": "2026-06-13T10:10:00Z"
@@ -219,7 +219,7 @@ DELETE /api/db/delete
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `dbName` | string | ✅ | 数据库名称 |
+| `name` | string | ✅ | 数据库名称 |
 | `query` | object | ✅ | 查询条件 |
 | `multi` | boolean | ❌ | 是否删除多条（默认 false） |
 
@@ -228,7 +228,7 @@ DELETE /api/db/delete
 **删除单条记录：**
 ```javascript
 GitDB.delete({
-    dbName: 'users',
+    name: 'users',
     query: { id: 1 }
 });
 ```
@@ -236,7 +236,7 @@ GitDB.delete({
 **删除多条记录：**
 ```javascript
 GitDB.delete({
-    dbName: 'users',
+    name: 'users',
     query: { status: 'inactive' },
     multi: true
 });
@@ -248,7 +248,7 @@ GitDB.delete({
     "success": true,
     "message": "记录删除成功",
     "data": {
-        "dbName": "users",
+        "name": "users",
         "deletedCount": 1,
         "commitSha": "jkl012...",
         "updatedAt": "2026-06-13T10:15:00Z"
@@ -271,12 +271,12 @@ DELETE /api/db/drop
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `dbName` | string | ✅ | 数据库名称 |
+| `name` | string | ✅ | 数据库名称 |
 
 **请求示例：**
 ```javascript
 GitDB.drop({
-    dbName: 'users'
+    name: 'users'
 });
 ```
 
@@ -286,7 +286,7 @@ GitDB.drop({
     "success": true,
     "message": "数据库已删除",
     "data": {
-        "dbName": "users",
+        "name": "users",
         "filePath": "data/users.json",
         "commitSha": "mno345...",
         "deletedAt": "2026-06-13T10:20:00Z"
@@ -392,13 +392,13 @@ const db = new GitDB({
 
 // 2. 创建数据库
 await db.create({
-    dbName: 'users',
+    name: 'users',
     description: '用户信息数据库'
 });
 
 // 3. 添加记录
 await db.add({
-    dbName: 'users',
+    name: 'users',
     data: [
         { name: 'Alice', email: 'alice@example.com', age: 25 },
         { name: 'Bob', email: 'bob@example.com', age: 30 }
@@ -407,25 +407,25 @@ await db.add({
 
 // 4. 查询记录
 const users = await db.find({
-    dbName: 'users',
+    name: 'users',
     query: { age: { $gte: 25 } }
 });
 
 // 5. 更新记录
 await db.update({
-    dbName: 'users',
+    name: 'users',
     query: { name: 'Alice' },
     data: { age: 26 }
 });
 
 // 6. 删除记录
 await db.delete({
-    dbName: 'users',
+    name: 'users',
     query: { name: 'Bob' }
 });
 
 // 7. 删除数据库
-await db.drop({ dbName: 'users' });
+await db.drop({ name: 'users' });
 ```
 
 ### 5.2 批量操作示例
@@ -433,7 +433,7 @@ await db.drop({ dbName: 'users' });
 ```javascript
 // 批量添加
 await db.add({
-    dbName: 'products',
+    name: 'products',
     data: [
         { id: 1, name: 'Product A', price: 99 },
         { id: 2, name: 'Product B', price: 199 },
@@ -443,7 +443,7 @@ await db.add({
 
 // 批量更新
 await db.update({
-    dbName: 'products',
+    name: 'products',
     query: { price: { $lt: 150 } },
     data: { discount: 0.9 },
     multi: true
@@ -451,7 +451,7 @@ await db.update({
 
 // 批量删除
 await db.delete({
-    dbName: 'products',
+    name: 'products',
     query: { stock: 0 },
     multi: true
 });
@@ -472,12 +472,12 @@ class GitDB {
         this.branch = config.branch || 'main';
     }
     
-    async create({ dbName, description, schema }) {}
-    async add({ dbName, data, autoId }) {}
-    async update({ dbName, query, data, multi }) {}
-    async delete({ dbName, query, multi }) {}
-    async drop({ dbName }) {}
-    async find({ dbName, query, limit, skip }) {}
+    async create({ name, description, schema }) {}
+    async add({ name, data, autoId }) {}
+    async update({ name, query, data, multi }) {}
+    async delete({ name, query, multi }) {}
+    async drop({ name }) {}
+    async find({ name, query, limit, skip }) {}
 }
 ```
 
@@ -552,13 +552,13 @@ const token = window.GITDB_CONFIG.token;
 ```javascript
 // ✅ 推荐：批量添加
 await db.add({
-    dbName: 'users',
+    name: 'users',
     data: [/* 100 条记录 */]
 });
 
 // ❌ 不推荐：逐条添加
 for (let user of users) {
-    await db.add({ dbName: 'users', data: user });
+    await db.add({ name: 'users', data: user });
 }
 ```
 
@@ -566,13 +566,13 @@ for (let user of users) {
 
 ```javascript
 // ✅ 推荐：使用 limit 限制返回数量
-await db.find({ dbName: 'users', limit: 10 });
+await db.find({ name: 'users', limit: 10 });
 
 // ✅ 推荐：使用具体查询条件
-await db.find({ dbName: 'users', query: { id: 1 } });
+await db.find({ name: 'users', query: { id: 1 } });
 
 // ❌ 不推荐：查询全部数据
-await db.find({ dbName: 'users' });
+await db.find({ name: 'users' });
 ```
 
 ---

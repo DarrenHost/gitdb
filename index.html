@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitDB - GitHub JSON 数据库</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #24292e;
+            --secondary: #0366d6;
+            --success: #28a745;
+            --danger: #d73a49;
+            --warning: #ff9800;
+            --bg: #f6f8fa;
+            --border: #e1e4e8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 40px 20px;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        /* Config Section */
+        .config-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .config-section h2 {
+            margin-bottom: 15px;
+            color: var(--secondary);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #035fc7;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* API Section */
+        .api-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .api-section h2 {
+            margin-bottom: 15px;
+            color: var(--secondary);
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .api-card {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .api-card h3 {
+            color: var(--secondary);
+            margin-bottom: 10px;
+        }
+
+        .api-card p {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        /* Result Section */
+        .result-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .result-section h2 {
+            margin-bottom: 15px;
+            color: var(--secondary);
+        }
+
+        .result-box {
+            background: #f6f8fa;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .result-box pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .status-success {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .status-error {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        /* Database List */
+        .db-list {
+            list-style: none;
+        }
+
+        .db-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .db-item:hover {
+            background: var(--bg);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            .api-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🗄️ GitDB</h1>
+            <p>把 GitHub 当作 JSON 数据库使用</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- 配置区域 -->
+        <div class="config-section">
+            <h2>⚙️ 配置</h2>
+            <div class="form-group">
+                <label for="owner">GitHub 用户名</label>
+                <input type="text" id="owner" value="DarrenHost" placeholder="your-username">
+            </div>
+            <div class="form-group">
+                <label for="repo">仓库名称</label>
+                <input type="text" id="repo" value="gitdb" placeholder="your-repo">
+            </div>
+            <div class="form-group">
+                <label for="token">GitHub Token</label>
+                <input type="password" id="token" placeholder="ghp_xxxxxxxxxxxx">
+                <small style="color: #666;">
+                    <a href="https://github.com/settings/tokens" target="_blank">获取 Token</a>
+                </small>
+            </div>
+            <button class="btn btn-primary" onclick="initDB()">初始化数据库</button>
+            <span id="initStatus" style="margin-left: 10px;"></span>
+        </div>
+
+        <!-- API 操作区域 -->
+        <div class="api-section">
+            <h2>🔧 API 操作</h2>
+            
+            <div class="api-grid">
+                <div class="api-card">
+                    <h3>CREATE</h3>
+                    <p>创建数据库</p>
+                    <input type="text" id="createDbName" placeholder="数据库名称" style="width: 100%; margin-bottom: 10px; padding: 6px;">
+                    <input type="text" id="createDesc" placeholder="描述（可选）" style="width: 100%; margin-bottom: 10px; padding: 6px;">
+                    <button class="btn btn-success btn-sm" onclick="createDB()">创建</button>
+                </div>
+
+                <div class="api-card">
+                    <h3>ADD</h3>
+                    <p>添加记录</p>
+                    <input type="text" id="addDbName" placeholder="数据库名称" style="width: 100%; margin-bottom: 10px; padding: 6px;">
+                    <textarea id="addData" placeholder='{"name": "John", "age": 25}' style="width: 100%; margin-bottom: 10px; padding: 6px; height: 60px;"></textarea>
+                    <button class="btn btn-success btn-sm" onclick="addRecord()">添加</button>
+                </div>
+
+                <div class="api-card">
+                    <h3>FIND</h3>
+                    <p>查询记录</p>
+                    <input type="text" id="findDbName" placeholder="数据库名称" style="width: 100%; margin-bottom: 10px; padding: 6px;">
+                    <textarea id="findQuery" placeholder='{"age": {"$gte": 18}}' style="width: 100%; margin-bottom: 10px; padding: 6px; height: 60px;"></textarea>
+                    <button class="btn btn-primary btn-sm" onclick="findRecords()">查询</button>
+                </div>
+
+                <div class="api-card">
+                    <h3>UPDATE</h3>
+                    <p>更新记录</p>
+                    <input type="text" id="updateDbName" placeholder="数据库名称" style="width: 100%; margin-bottom: 10px; padding: 6px;">
+                    <input type="text" id="updateQuery" placeholder='{"id": 1}' style="width: 100%; margin-bottom: 10px; padding: 6px;">
+                    <textarea id="updateData" placeholder='{"age": 26}' style="width: 100%; margin-bottom: 10px; padding: 6px; height: 60px;"></textarea>
+                    <button class="btn btn-primary btn-sm" onclick="updateRecord()">更新</button>
+                </div>
+
+                <div class="api-card">
+                    <h3>DELETE</h3>
+                    <p>删除记录</p>
+                    <input type="text" id="deleteDbName" placeholder="数据库名称" style="width: 100%; margin-bottom: 10px; padding: 6px;">
+                    <input type="text" id="deleteQuery" placeholder='{"id": 1}' style="width: 100%; margin-bottom: 10px; padding: 6px;">
+                    <button class="btn btn-danger btn-sm" onclick="deleteRecord()">删除</button>
+                </div>
+
+                <div class="api-card">
+                    <h3>DROP</h3>
+                    <p>删除数据库</p>
+                    <input type="text" id="dropDbName" placeholder="数据库名称" style="width: 100%; margin-bottom: 10px; padding: 6px;">
+                    <button class="btn btn-danger btn-sm" onclick="dropDB()">删除</button>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="listDatabases()">📋 获取数据库列表</button>
+            </div>
+        </div>
+
+        <!-- 结果区域 -->
+        <div class="result-section">
+            <h2>📊 操作结果</h2>
+            <div class="result-box">
+                <pre id="result">等待操作...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="gitdb.js"></script>
+    <script>
+        let db = null;
+
+        function showResult(data, isError = false) {
+            const resultEl = document.getElementById('result');
+            resultEl.innerHTML = JSON.stringify(data, null, 2);
+            resultEl.className = isError ? 'status-error' : 'status-success';
+        }
+
+        function showError(message) {
+            showResult({ success: false, error: message }, true);
+        }
+
+        function initDB() {
+            const owner = document.getElementById('owner').value;
+            const repo = document.getElementById('repo').value;
+            const token = document.getElementById('token').value;
+
+            if (!owner || !repo || !token) {
+                showError('请填写完整的配置信息');
+                return;
+            }
+
+            try {
+                db = new GitDB({
+                    owner,
+                    repo,
+                    token,
+                    branch: 'main',
+                    dataDir: 'data'
+                });
+
+                document.getElementById('initStatus').innerHTML = '<span class="status-success">✅ 初始化成功</span>';
+                showResult({ success: true, message: 'GitDB 初始化成功', config: { owner, repo } });
+            } catch (error) {
+                document.getElementById('initStatus').innerHTML = '<span class="status-error">❌ 初始化失败</span>';
+                showError(error.message);
+            }
+        }
+
+        async function createDB() {
+            if (!db) {
+                showError('请先初始化数据库');
+                return;
+            }
+
+            const dbName = document.getElementById('createDbName').value;
+            const description = document.getElementById('createDesc').value;
+
+            if (!dbName) {
+                showError('请填写数据库名称');
+                return;
+            }
+
+            try {
+                const result = await db.create({ dbName, description });
+                showResult(result);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function addRecord() {
+            if (!db) {
+                showError('请先初始化数据库');
+                return;
+            }
+
+            const dbName = document.getElementById('addDbName').value;
+            const dataStr = document.getElementById('addData').value;
+
+            if (!dbName || !dataStr) {
+                showError('请填写数据库名称和数据');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(dataStr);
+                const result = await db.add({ dbName, data });
+                showResult(result);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function findRecords() {
+            if (!db) {
+                showError('请先初始化数据库');
+                return;
+            }
+
+            const dbName = document.getElementById('findDbName').value;
+            const queryStr = document.getElementById('findQuery').value;
+
+            if (!dbName) {
+                showError('请填写数据库名称');
+                return;
+            }
+
+            try {
+                const query = queryStr ? JSON.parse(queryStr) : null;
+                const result = await db.find({ dbName, query });
+                showResult(result);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function updateRecord() {
+            if (!db) {
+                showError('请先初始化数据库');
+                return;
+            }
+
+            const dbName = document.getElementById('updateDbName').value;
+            const queryStr = document.getElementById('updateQuery').value;
+            const dataStr = document.getElementById('updateData').value;
+
+            if (!dbName || !queryStr || !dataStr) {
+                showError('请填写完整信息');
+                return;
+            }
+
+            try {
+                const query = JSON.parse(queryStr);
+                const data = JSON.parse(dataStr);
+                const result = await db.update({ dbName, query, data });
+                showResult(result);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function deleteRecord() {
+            if (!db) {
+                showError('请先初始化数据库');
+                return;
+            }
+
+            const dbName = document.getElementById('deleteDbName').value;
+            const queryStr = document.getElementById('deleteQuery').value;
+
+            if (!dbName || !queryStr) {
+                showError('请填写数据库名称和查询条件');
+                return;
+            }
+
+            try {
+                const query = JSON.parse(queryStr);
+                const result = await db.delete({ dbName, query });
+                showResult(result);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function dropDB() {
+            if (!db) {
+                showError('请先初始化数据库');
+                return;
+            }
+
+            const dbName = document.getElementById('dropDbName').value;
+
+            if (!dbName) {
+                showError('请填写数据库名称');
+                return;
+            }
+
+            if (!confirm(`确定要删除数据库 "${dbName}" 吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            try {
+                const result = await db.drop({ dbName });
+                showResult(result);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function listDatabases() {
+            if (!db) {
+                showError('请先初始化数据库');
+                return;
+            }
+
+            try {
+                const result = await db.listDatabases();
+                showResult({
+                    success: true,
+                    message: `找到 ${result.length} 个数据库`,
+                    databases: result
+                });
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+    </script>
+</body>
+</html>

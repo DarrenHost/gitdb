@@ -53,6 +53,14 @@ class TokenMixer {
             throw new Error('Invalid token');
         }
         
+        // 支持多种 Token 格式
+        const validPrefixes = ['ghp_', 'gho_', 'ghu_', 'ghs_', 'ghr_', 'github_pat_'];
+        const isValidFormat = validPrefixes.some(prefix => token.startsWith(prefix));
+        
+        if (!isValidFormat) {
+            throw new Error('Invalid token format. Should start with ghp_, gho_, ghu_, ghs_, ghr_, or github_pat_');
+        }
+        
         // 添加前缀并混淆
         let mixed = TokenMixer.PREFIX;
         for (const char of token) {

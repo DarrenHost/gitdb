@@ -200,6 +200,11 @@
             <strong>⚠️ 重要提示：</strong>
             <p>这只是一个简单的字符串混淆，<strong>不是加密</strong>！目的是防止 GitHub 自动扫描检测到明文 token。</p>
             <p>混淆后的 token 格式：<code>gitdb_xxxxxxxxxxxx</code></p>
+            <p style="margin-top: 10px;">
+                <strong>支持的 Token 类型：</strong>
+                <br>• 经典 Token: <code>ghp_xxx</code>, <code>gho_xxx</code> 等
+                <br>• Fine-grained Token: <code>github_pat_xxx</code>
+            </p>
         </div>
 
         <!-- 混淆工具 -->
@@ -214,18 +219,21 @@
                 <input 
                     type="password" 
                     id="inputToken" 
-                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                    placeholder="ghp_xxx 或 github_pat_xxx"
                     autocomplete="off"
                 >
                 <small style="color: #666;">
                     获取 Token: 
                     <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings</a>
+                    | 
+                    <a href="https://github.com/settings/tokens?type=beta" target="_blank">Fine-grained Tokens</a>
                 </small>
             </div>
 
             <div class="btn-group">
                 <button class="btn btn-primary" onclick="mixToken()">生成混淆 Token</button>
                 <button class="btn btn-success" onclick="copyToClipboard('mixedResult')">复制结果</button>
+                <a href="demo.html" class="btn btn-primary" style="text-decoration: none; color: white;">🚀 打开演示页面</a>
             </div>
 
             <div class="result-box" id="mixedResult" style="display: none;"></div>
@@ -250,6 +258,7 @@
             <div class="btn-group">
                 <button class="btn btn-primary" onclick="unmixToken()">还原原始 Token</button>
                 <button class="btn btn-success" onclick="copyToClipboard('unmixedResult')">复制结果</button>
+                <a href="demo.html" class="btn btn-primary" style="text-decoration: none; color: white;">🚀 打开演示页面</a>
             </div>
 
             <div class="result-box" id="unmixedResult" style="display: none;"></div>
@@ -315,8 +324,12 @@ window.GITDB_TOKEN = 'gitdb_xxxxxxxxxxxx';
                     throw new Error('请输入 GitHub Token');
                 }
                 
-                if (!token.startsWith('ghp_') && !token.startsWith('gho_')) {
-                    throw new Error('Token 格式不正确，应该以 ghp_ 或 gho_ 开头');
+                // 检查 Token 格式
+                const validPrefixes = ['ghp_', 'gho_', 'ghu_', 'ghs_', 'ghr_', 'github_pat_'];
+                const isValidFormat = validPrefixes.some(prefix => token.startsWith(prefix));
+                
+                if (!isValidFormat) {
+                    throw new Error('Token 格式不正确，应该以 ghp_, gho_, ghu_, ghs_, ghr_ 或 github_pat_ 开头');
                 }
                 
                 const mixed = mixer.mix(token);

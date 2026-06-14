@@ -558,12 +558,37 @@
                 localStorage.setItem('gitdb_repo', repo);
                 localStorage.setItem('gitdb_token', token);
 
-                // 直接传入 token 初始化
-                db = new GitDB({ 
-                    owner, 
-                    repo,
-                    token  // 直接传入，GitDB 会自动解混淆
-                });
+                // 🔧 检测是否使用 Cloudflare Workers 代理
+                const useProxy = token.startsWith('http://') || token.startsWith('https://');
+                
+                if (useProxy) {
+                    // 使用代理模式 - 通过 URL 参数传递混淆 Token
+                    const mixer = new TokenMixer();
+                    let proxyUrl = token;
+                    
+                    // 如果输入的是混淆 token，先解混淆
+                    if (mixer.isMixed(token)) {
+                        const githubToken = mixer.unmix(token);
+                        // 将解混淆后的 token 作为 URL 参数
+                        proxyUrl = `${token}?token=${mixer.mix(githubToken)}`;
+                    }
+                    
+                    db = new GitDB({ 
+                        owner, 
+                        repo,
+                        apiBaseUrl: proxyUrl
+                    });
+                    log('🔗 使用 Cloudflare Workers 代理模式', 'info');
+                    log(`📡 Proxy URL: ${proxyUrl}`, 'info');
+                } else {
+                    // 直接模式
+                    db = new GitDB({ 
+                        owner, 
+                        repo,
+                        token  // 直接传入 Token
+                    });
+                    log('🔐 使用直接连接模式', 'info');
+                }
                 
                 log('数据库连接成功！', 'success');
                 document.getElementById('connectStatus').innerHTML = '<span class="badge badge-success">✅ 已连接</span>';

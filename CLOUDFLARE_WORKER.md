@@ -36,28 +36,26 @@
 **步骤 2：配置代码**
 
 1. 点击 **Edit code**
-2. 复制 `worker.js` 的全部内容
-3. 粘贴到编辑器
+2. 复制 `worker.js` 和 `token-mixer.js` 的内容
+3. 粘贴到编辑器（需要两个文件）
 4. 点击 **Save and deploy**
 
-**步骤 3：设置环境变量**
+**步骤 3：设置环境变量（可选）**
 
-1. 点击 **Settings** → **Variables**
-2. 点击 **Add variable**
-3. 添加以下变量：
-
+**方式 A：Worker 存储 Token（最安全）**
 ```
+Settings → Variables → Add variable
+
 Variable name: GITHUB_TOKEN
-Value: github_pat_xxx 或 ghp_xxx
+Value: github_pat_xxx
 Encrypt: ✅ 勾选
-
-Variable name: ALLOWED_ORIGINS
-Value: https://darrenhost.github.io,http://localhost:8080
-Encrypt: ❌ 不勾选
 ```
 
-4. 点击 **Save**
-5. 点击 **Deploy** 重新部署
+**方式 B：通过 URL 参数传递 Token（灵活）**
+```
+不需要设置 GITHUB_TOKEN
+前端通过 ?token=gitdb_xxx 传递
+```
 
 **步骤 4：获取 Worker URL**
 
@@ -126,28 +124,52 @@ Deployed https://gitdb-proxy.your-username.workers.dev
 
 ## 🔧 配置 GitDB
 
-### 更新 gitdb.js 支持代理
+### 方式 A：Worker 存储 Token（最安全）
 
 ```javascript
-// 添加 apiBaseUrl 配置
+// 不需要传入 token，Worker 会自动使用环境变量中的 token
 const db = new GitDB({
     owner: 'DarrenHost',
     repo: 'gitdb',
-    apiBaseUrl: 'https://gitdb-proxy.your-username.workers.dev'  // Worker URL
+    apiBaseUrl: 'https://gitdb-proxy.your-username.workers.dev'
 });
 ```
 
-### 修改 _githubAPI 方法
+### 方式 B：通过 URL 参数传递 Token（灵活）⭐
 
 ```javascript
-async _githubAPI(endpoint, method = 'GET', body = null) {
-    // 支持自定义 API 基础 URL
-    const baseUrl = this.apiBaseUrl || 'https://api.github.com';
-    const url = `${baseUrl}${endpoint}`;
-    
-    // ... 其他代码不变
-}
+// 1. 生成混淆 Token
+const mixer = new TokenMixer();
+const mixedToken = mixer.mix('github_pat_xxx');
+
+// 2. 构建带 token 参数的 URL
+const proxyUrl = `https://gitdb-proxy.workers.dev?token=${mixedToken}`;
+
+// 3. 使用代理
+const db = new GitDB({
+    owner: 'DarrenHost',
+    repo: 'gitdb',
+    apiBaseUrl: proxyUrl
+});
+
+// 4. 开始使用（Token 不会暴露在前端代码中）
+const databases = await db.show();
 ```
+
+### Demo 页面使用
+
+**输入框输入：**
+```
+GitHub 用户名：DarrenHost
+仓库名称：gitdb
+Token: https://gitdb-proxy.workers.dev?token=gitdb_xxx
+```
+
+**点击"连接数据库"后：**
+- ✅ 自动检测 URL 格式
+- ✅ 通过 URL 参数传递混淆 Token
+- ✅ Worker 自动解混淆
+- ✅ Token 不会暴露在前端代码中
 
 ---
 

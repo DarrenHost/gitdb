@@ -521,8 +521,8 @@
         </div>
     </div>
 
-    <script src="gitdb.js"></script>
     <script src="token-mixer.js"></script>
+    <script src="gitdb.js"></script>
     <script>
         let db = null;
         const mixer = new TokenMixer();
@@ -558,7 +558,12 @@
                 localStorage.setItem('gitdb_repo', repo);
                 localStorage.setItem('gitdb_token', token);
 
-                db = new GitDB({ owner, repo });
+                // 直接传入 token 初始化
+                db = new GitDB({ 
+                    owner, 
+                    repo,
+                    token  // 直接传入，GitDB 会自动解混淆
+                });
                 
                 log('数据库连接成功！', 'success');
                 document.getElementById('connectStatus').innerHTML = '<span class="badge badge-success">✅ 已连接</span>';
@@ -566,7 +571,16 @@
                 // 刷新数据库列表
                 await refreshDBList();
             } catch (error) {
-                log(`连接失败：${error.message}`, 'error');
+                let errorMsg = error.message;
+                
+                // 提供更详细的错误提示
+                if (errorMsg.includes('Bad credentials') || errorMsg.includes('401')) {
+                    errorMsg = 'Token 无效或已过期\n\n可能原因：\n1. Token 格式不正确\n2. Token 已过期或被撤销\n3. Token 权限不足（需要 Contents: Read and write）\n\n解决方法：\n1. 重新生成 Token：https://github.com/settings/tokens\n2. 如果是 Fine-grained Token，确保勾选 Contents 权限\n3. 使用混淆工具生成混淆后的 Token';
+                } else if (errorMsg.includes('Not Found') || errorMsg.includes('404')) {
+                    errorMsg = '仓库不存在或无权限访问\n\n请检查：\n1. 用户名是否正确\n2. 仓库名称是否正确\n3. Token 是否有该仓库的访问权限';
+                }
+                
+                log(`连接失败：${errorMsg}`, 'error');
                 document.getElementById('connectStatus').innerHTML = '<span class="badge badge-error">❌ 失败</span>';
             }
         }

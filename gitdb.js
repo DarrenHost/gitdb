@@ -15,6 +15,7 @@ class GitDB {
      * @param {string} config.owner - GitHub 用户名
      * @param {string} config.repo - 仓库名称
      * @param {string} [config.token] - GitHub Token（可选，会从多处自动获取）
+     * @param {string} [config.apiBaseUrl] - API 基础 URL（可选，用于 Cloudflare Workers 代理）
      * @param {string} [config.branch='main'] - 分支名称
      * @param {string} [config.dataDir='data'] - 数据目录
      * 
@@ -34,11 +35,14 @@ class GitDB {
         this.repo = config.repo;
         this.branch = config.branch || 'main';
         this.dataDir = config.dataDir || 'data';
+        
+        // 🔧 支持自定义 API 基础 URL（用于 Cloudflare Workers 代理）
+        this.apiBaseUrl = config.apiBaseUrl || null;
 
         // 🔐 安全获取 token（多来源）
         this.token = this._getSecureToken(config.token);
 
-        if (!this.token) {
+        if (!this.token && !this.apiBaseUrl) {
             throw new Error('GitDB: Token required. Please provide token via:\n' +
                 '  1. config.token\n' +
                 '  2. process.env.GITDB_TOKEN (Node.js)\n' +
@@ -120,7 +124,9 @@ class GitDB {
      * @private
      */
     async _githubAPI(endpoint, method = 'GET', body = null) {
-        const url = `https://api.github.com/${endpoint}`;
+        // 🔧 支持自定义 API 基础 URL（Cloudflare Workers 代理）
+        const baseUrl = this.apiBaseUrl || 'https://api.github.com';
+        const url = `${baseUrl}${endpoint}`;
         
         // 🔧 修复 CORS 预检问题
         // GitHub API 的 OPTIONS 请求不会携带 Authorization 头

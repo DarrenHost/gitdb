@@ -177,15 +177,53 @@ Token: https://gitdb-proxy.workers.dev?token=gitdb_xxx
 
 ### 1. 限制允许的域名
 
+**wrangler.toml:**
 ```toml
-# wrangler.toml
 [vars]
 ALLOWED_ORIGINS = "https://your-domain.com,https://darrenhost.github.io"
 ```
 
-**不要使用 `*`，限制具体域名更安全！**
+**Cloudflare Dashboard:**
+```
+Settings → Variables → ALLOWED_ORIGINS
+Value: https://your-domain.com,https://darrenhost.github.io
+```
 
-### 2. 使用 Fine-grained Token
+**⚠️ 不要使用 `*`，限制具体域名更安全！**
+
+### 2. CORS 头配置
+
+Worker 会自动添加以下 CORS 头：
+
+```javascript
+Access-Control-Allow-Origin: https://your-domain.com
+Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Headers: Authorization, Content-Type, Accept, X-GitHub-Token
+Access-Control-Max-Age: 86400  // 24 小时
+Access-Control-Expose-Headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
+Vary: Origin  // 缓存优化
+```
+
+### 3. 处理 CORS 预检
+
+**浏览器发送：**
+```http
+OPTIONS /repos/.../contents/data
+Origin: https://your-domain.com
+Access-Control-Request-Method: GET
+Access-Control-Request-Headers: Authorization
+```
+
+**Worker 响应：**
+```http
+HTTP/1.1 204 No Content
+Access-Control-Allow-Origin: https://your-domain.com
+Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Headers: Authorization, Content-Type, Accept, X-GitHub-Token
+Access-Control-Max-Age: 86400
+```
+
+### 4. 使用 Fine-grained Token
 
 **权限配置：**
 - ✅ Repository permissions → Contents: Read and write

@@ -157,15 +157,23 @@ function getCORSHeaders(request, env) {
   const origin = request.headers.get('Origin') || '';
   const allowedOrigins = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : ['*'];
   
+  // 验证 Origin
   const allowOrigin = allowedOrigins.includes('*') || allowedOrigins.includes(origin) 
     ? origin || '*' 
     : allowedOrigins[0];
   
   return {
+    // 基础 CORS 头
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept',
-    'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept, X-GitHub-Token',
+    'Access-Control-Max-Age': '86400', // 24 小时
+    
+    // 暴露自定义头给前端
+    'Access-Control-Expose-Headers': 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset',
+    
+    // 其他头
+    'Vary': 'Origin', // 缓存优化
     'Cache-Control': 'no-cache'
   };
 }

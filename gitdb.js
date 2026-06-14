@@ -113,11 +113,19 @@ class GitDB {
      */
     async _githubAPI(endpoint, method = 'GET', body = null) {
         const url = `https://api.github.com/${endpoint}`;
+        
+        // 🔧 修复 CORS 预检问题
+        // GitHub API 的 OPTIONS 请求不会携带 Authorization 头
+        // 解决：GET 请求不设置 Content-Type，避免触发预检
         const headers = {
             'Authorization': `token ${this.token}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json'
+            'Accept': 'application/vnd.github.v3+json'
         };
+        
+        // 只有 POST/PUT/PATCH 才设置 Content-Type
+        if (body && ['POST', 'PUT', 'PATCH'].includes(method)) {
+            headers['Content-Type'] = 'application/json';
+        }
 
         const config = { method, headers };
         if (body) {
@@ -127,8 +135,8 @@ class GitDB {
         const response = await fetch(url, config);
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(`GitHub API Error: ${error.message}`);
+            const error = await response.json().catch(() => ({ message: response.statusText }));
+            throw new Error(`GitHub API Error: ${error.message || response.statusText}`);
         }
 
         return response.json();

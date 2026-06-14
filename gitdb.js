@@ -98,8 +98,16 @@ class GitDB {
                     console.log('✅ Token successfully unmixed');
                 } catch (error) {
                     console.error('❌ Failed to unmix token:', error.message);
+                    // 解混淆失败，使用原始 token
                 }
             }
+        }
+        
+        // 🔍 调试日志
+        if (token) {
+            const tokenPrefix = token.substring(0, 15) + '...';
+            console.log('✅ Token loaded:', tokenPrefix);
+            console.log('   Token type:', token.startsWith('github_pat_') ? 'Fine-grained' : 'Classic');
         }
         
         return token;

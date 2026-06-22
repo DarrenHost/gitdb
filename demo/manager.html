@@ -79,6 +79,11 @@
             gap: 10px;
         }
 
+        .btn-test {
+            background: linear-gradient(135deg, #ffaa00 0%, #cc8800 100%);
+            color: #fff;
+        }
+
         /* Config Panel */
         .config-panel {
             max-width: 1400px;
@@ -499,6 +504,7 @@
             </div>
             <div class="header-actions">
                 <button class="btn btn-secondary" onclick="showConfig()">⚙️ 配置</button>
+                <button class="btn btn-test" onclick="testConnection()">🔌 测试</button>
                 <button class="btn btn-primary" onclick="refreshAll()">🔄 刷新</button>
             </div>
         </div>
@@ -519,7 +525,8 @@
         </div>
         <div style="margin-top: 15px;">
             <button class="btn btn-success" onclick="saveConfig()">💾 保存配置</button>
-            <button class="btn btn-secondary" onclick="testConnection()">🔌 测试连接</button>
+            <button class="btn btn-test" onclick="testConnection()">🔌 测试连接</button>
+            <button class="btn btn-primary" onclick="refreshAll()">🔄 刷新列表</button>
         </div>
     </div>
 
@@ -733,12 +740,23 @@
         // ═══════════════════════════════════════════════════════════
         // 数据库操作
         // ═══════════════════════════════════════════════════════════
+        async function testConnection() {
+            try {
+                showToast('正在测试连接...', 'success');
+                const data = await api('/health');
+                showToast('✅ 连接成功！' + new Date(data.timestamp).toLocaleString());
+            } catch (e) {
+                showToast('❌ 连接失败：' + e.message, 'error');
+            }
+        }
+
         async function refreshAll() {
             try {
                 const data = await api('/show');
                 state.databases = data.data || [];
                 renderDatabases();
                 updateStats();
+                showToast('数据库列表已刷新', 'success');
             } catch (e) {
                 if (e.message !== 'Not configured') {
                     showToast('刷新失败：' + e.message, 'error');

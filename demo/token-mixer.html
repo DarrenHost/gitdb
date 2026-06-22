@@ -233,7 +233,7 @@
             <div class="btn-group">
                 <button class="btn btn-primary" onclick="mixToken()">生成混淆 Token</button>
                 <button class="btn btn-success" onclick="copyToClipboard('mixedResult')">复制结果</button>
-                <a href="demo.html" class="btn btn-primary" style="text-decoration: none; color: white;">🚀 打开演示页面</a>
+                <a href="manager.html" class="btn btn-primary" style="text-decoration: none; color: white;">🚀 打开管理界面</a>
             </div>
 
             <div class="result-box" id="mixedResult" style="display: none;"></div>
@@ -258,7 +258,7 @@
             <div class="btn-group">
                 <button class="btn btn-primary" onclick="unmixToken()">还原原始 Token</button>
                 <button class="btn btn-success" onclick="copyToClipboard('unmixedResult')">复制结果</button>
-                <a href="demo.html" class="btn btn-primary" style="text-decoration: none; color: white;">🚀 打开演示页面</a>
+                <a href="manager.html" class="btn btn-primary" style="text-decoration: none; color: white;">🚀 打开管理界面</a>
             </div>
 
             <div class="result-box" id="unmixedResult" style="display: none;"></div>
@@ -310,7 +310,7 @@ window.GITDB_TOKEN = 'gitdb_xxxxxxxxxxxx';
         </div>
     </div>
 
-    <script src="token-mixer.js"></script>
+    <script src="../src/token-mixer.js"></script>
     <script>
         const mixer = new TokenMixer();
 

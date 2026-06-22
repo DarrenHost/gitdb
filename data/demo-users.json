@@ -1,0 +1,130 @@
+{
+  "_meta_": {
+    "name": "demo-users",
+    "description": "示例用户数据库 - 用于演示 GitDB 功能",
+    "createdAt": "2026-06-23T10:00:00.000Z",
+    "updatedAt": "2026-06-23T10:00:00.000Z"
+  },
+  "_data_": [
+    {
+      "id": 1,
+      "name": "张三",
+      "email": "zhangsan@example.com",
+      "age": 28,
+      "gender": "male",
+      "department": "技术部",
+      "position": "前端工程师",
+      "salary": 15000,
+      "status": "active",
+      "createdAt": "2026-01-15T08:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "李四",
+      "email": "lisi@example.com",
+      "age": 32,
+      "gender": "male",
+      "department": "技术部",
+      "position": "后端工程师",
+      "salary": 18000,
+      "status": "active",
+      "createdAt": "2026-02-20T09:15:00.000Z"
+    },
+    {
+      "id": 3,
+      "name": "王五",
+      "email": "wangwu@example.com",
+      "age": 25,
+      "gender": "male",
+      "department": "产品部",
+      "position": "产品经理",
+      "salary": 16000,
+      "status": "active",
+      "createdAt": "2026-03-10T10:00:00.000Z"
+    },
+    {
+      "id": 4,
+      "name": "赵六",
+      "email": "zhaoliu@example.com",
+      "age": 29,
+      "gender": "female",
+      "department": "设计部",
+      "position": "UI 设计师",
+      "salary": 14000,
+      "status": "active",
+      "createdAt": "2026-03-25T11:30:00.000Z"
+    },
+    {
+      "id": 5,
+      "name": "钱七",
+      "email": "qianqi@example.com",
+      "age": 35,
+      "gender": "male",
+      "department": "技术部",
+      "position": "技术总监",
+      "salary": 35000,
+      "status": "active",
+      "createdAt": "2026-01-05T08:00:00.000Z"
+    },
+    {
+      "id": 6,
+      "name": "孙八",
+      "email": "sunba@example.com",
+      "age": 27,
+      "gender": "female",
+      "department": "市场部",
+      "position": "市场专员",
+      "salary": 12000,
+      "status": "active",
+      "createdAt": "2026-04-12T14:20:00.000Z"
+    },
+    {
+      "id": 7,
+      "name": "周九",
+      "email": "zhoujiu@example.com",
+      "age": 31,
+      "gender": "male",
+      "department": "技术部",
+      "position": "全栈工程师",
+      "salary": 20000,
+      "status": "active",
+      "createdAt": "2026-02-28T16:45:00.000Z"
+    },
+    {
+      "id": 8,
+      "name": "吴十",
+      "email": "wushi@example.com",
+      "age": 26,
+      "gender": "female",
+      "department": "人事部",
+      "position": "HR 专员",
+      "salary": 11000,
+      "status": "active",
+      "createdAt": "2026-05-08T09:30:00.000Z"
+    },
+    {
+      "id": 9,
+      "name": "郑十一",
+      "email": "zhengshiyi@example.com",
+      "age": 38,
+      "gender": "male",
+      "department": "销售部",
+      "position": "销售总监",
+      "salary": 30000,
+      "status": "active",
+      "createdAt": "2026-01-20T10:15:00.000Z"
+    },
+    {
+      "id": 10,
+      "name": "冯十二",
+      "email": "fengshier@example.com",
+      "age": 24,
+      "gender": "female",
+      "department": "技术部",
+      "position": "测试工程师",
+      "salary": 13000,
+      "status": "active",
+      "createdAt": "2026-06-01T08:45:00.000Z"
+    }
+  ]
+}

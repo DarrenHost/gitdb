@@ -111,26 +111,57 @@ class GitDBCore {
             headers['Content-Type'] = 'application/json';
         }
         
+        // 🔍 详细日志
+        console.log('📡 GitHub API Request:', {
+            url,
+            method,
+            endpoint,
+            owner: this.owner,
+            repo: this.repo,
+            branch: this.branch,
+            tokenPrefix: this.token.substring(0, 8) + '...',
+            tokenLength: this.token.length,
+            hasBody: !!body
+        });
+        
         const response = await fetch(url, {
             method,
             headers,
             body: body ? JSON.stringify(body) : null
         });
         
+        console.log('📥 GitHub API Response:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: response.url
+        });
+        
         if (!response.ok) {
             const error = await response.json().catch(() => ({ message: response.statusText }));
+            console.error('❌ GitHub API Error:', {
+                status: response.status,
+                statusText: response.statusText,
+                error,
+                endpoint,
+                method
+            });
             throw new Error(`GitHub API: ${error.message || response.statusText}`);
         }
         
-        return response.json();
+        const data = await response.json();
+        console.log('✅ GitHub API Success:', { endpoint, dataType: typeof data });
+        return data;
     }
     
     async _getFile(filePath) {
+        console.log('📂 Getting file:', filePath);
         const cacheKey = filePath;
         const cached = this.cache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < 300000) {
+            console.log('💾 Cache hit:', filePath);
             return cached;
         }
+        console.log('💾 Cache miss:', filePath, 'fetching from GitHub...');
         
         try {
             const data = await this._request(
@@ -139,21 +170,30 @@ class GitDBCore {
             const content = JSON.parse(atob(data.content));
             const result = { data, sha: data.sha, content };
             this.cache.set(cacheKey, { ...result, timestamp: Date.now() });
+            console.log('✅ File loaded:', filePath, 'size:', data.size, 'bytes');
             return result;
         } catch (e) {
-            if (e.message.includes('404')) return null;
+            if (e.message.includes('404')) {
+                console.log('⚠️ File not found:', filePath);
+                return null;
+            }
+            console.error('❌ Error getting file:', filePath, e.message);
             throw e;
         }
     }
     
     async _commitFile(filePath, content, sha, message) {
+        console.log('📝 Committing file:', filePath, 'message:', message);
         const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2))));
+        console.log('📊 Content size:', encoded.length, 'bytes (encoded)');
+        
         const result = await this._request(
             `/repos/${this.owner}/${this.repo}/contents/${filePath}`,
             'PUT',
             { message, content: encoded, sha, branch: this.branch }
         );
         this.cache.delete(filePath);
+        console.log('✅ File committed:', filePath, 'commit:', result.commit?.sha?.substring(0, 7));
         return result;
     }
     
@@ -191,9 +231,13 @@ class GitDBCore {
     // ========== 公开 API ==========
     
     async create({ name, description = '', schema = null }) {
+        console.log('📦 Creating database:', name);
         const filePath = `${this.dataDir}/${name}.json`;
+        console.log('📁 File path:', filePath);
+        
         const existing = await this._getFile(filePath);
         if (existing) {
+            console.log('⚠️ Database already exists:', name);
             throw new Error('DATABASE_EXISTS');
         }
         
@@ -201,8 +245,10 @@ class GitDBCore {
             _meta_: { name, description, schema, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
             _data_: []
         };
+        console.log('📄 Initial data:', JSON.stringify(initialData, null, 2).substring(0, 100) + '...');
         
         const result = await this._commitFile(filePath, initialData, null, `Create database: ${name}`);
+        console.log('✅ Database created:', name);
         return { success: true, message: '数据库创建成功', data: { name, filePath, commitSha: result.commit.sha } };
     }
     

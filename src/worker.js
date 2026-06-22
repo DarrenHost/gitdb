@@ -1,21 +1,13 @@
 /**
  * GitDB GitHub API Proxy - Cloudflare Workers
  * 
- * 🚀 一键部署：复制全部代码粘贴到 Cloudflare Workers 编辑器即可
+ * 🚀 一键部署：复制全部代码粘贴到 Cloudflare Workers 编辑器
  * 
  * 📋 配置说明（只需修改下方 CONFIG 对象）：
- *   - GITHUB_TOKEN: 你的 GitHub Token（可选，也可通过 URL 参数传递）
- *   - ALLOWED_ORIGINS: 允许跨域访问的域名列表
- * 
- * 🔐 Token 传递方式（优先级从高到低）：
- *   1. URL 参数：?token=gitdb_xxx
- *   2. HTTP Header: Authorization: token gitdb_xxx
- *   3. HTTP Header: X-GitHub-Token: gitdb_xxx
- *   4. Worker 环境变量：GITHUB_TOKEN
+ *   - GITHUB_TOKEN: 你的 GitHub Token
  * 
  * 📖 使用示例：
  *   GET  https://your-worker.workers.dev/proxy/repos/darrenhost/gitdb
- *   GET  https://your-worker.workers.dev/proxy/repos/darrenhost/gitdb?token=gitdb_xxx
  * 
  * 部署教程：https://developers.cloudflare.com/workers/
  */
@@ -24,16 +16,10 @@
 // 🔧 配置区域 - 只需修改这里
 // ═══════════════════════════════════════════════════════════
 const CONFIG = {
-    // GitHub Token（可选）
-    // 留空则通过 URL 参数或 Header 传递
+    // GitHub Token
     // 格式：ghp_xxx 或 github_pat_xxx
     // ⚠️ 建议通过 Cloudflare 环境变量设置，不要硬编码在这里
-    GITHUB_TOKEN: '',
-    
-    // 允许跨域访问的域名列表
-    // '*' 表示允许所有域名（开发环境）
-    // 生产环境建议指定具体域名，如：['https://example.com', 'https://app.example.com']
-    ALLOWED_ORIGINS: ['*']
+    GITHUB_TOKEN: ''
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -61,7 +47,7 @@ class TokenMixer {
     static REVERSE_MAP = {};
     
     constructor() {
-        if (TokenMixer.REVERSE_MAP.length === 0) {
+        if (Object.keys(TokenMixer.REVERSE_MAP).length === 0) {
             for (const [key, value] of Object.entries(TokenMixer.CHAR_MAP)) {
                 TokenMixer.REVERSE_MAP[value] = key;
             }
@@ -77,7 +63,7 @@ class TokenMixer {
         const isValidFormat = validPrefixes.some(prefix => token.startsWith(prefix));
         
         if (!isValidFormat) {
-            throw new Error('Invalid token format. Should start with ghp_, gho_, ghu_, ghs_, ghr_, or github_pat_');
+            throw new Error('Invalid token format');
         }
         
         let mixed = TokenMixer.PREFIX;
@@ -144,20 +130,6 @@ class TokenMixer {
 // ═══════════════════════════════════════════════════════════
 export default {
     async fetch(request, env, ctx) {
-        // 处理 CORS 预检请求
-        if (request.method === 'OPTIONS') {
-            return handleCORS(request, env);
-        }
-        
-        // 验证请求方法
-        const validMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
-        if (!validMethods.includes(request.method)) {
-            return new Response('Method not allowed', { 
-                status: 405,
-                headers: getCORSHeaders(request, env)
-            });
-        }
-        
         // 获取请求路径
         const url = new URL(request.url);
         const path = url.pathname.replace('/proxy', '').replace('/github', '');
@@ -166,9 +138,8 @@ export default {
         const token = getAuthToken(request, env);
         
         if (!token) {
-            return new Response('Unauthorized: Missing or invalid Authorization header. Use ?token=gitdb_xxx or set GITHUB_TOKEN in environment.', { 
-                status: 401,
-                headers: getCORSHeaders(request, env)
+            return new Response('Unauthorized: Missing or invalid token. Use ?token=gitdb_xxx or set GITHUB_TOKEN in environment.', { 
+                status: 401
             });
         }
         
@@ -194,7 +165,6 @@ export default {
                 status: githubResponse.status,
                 statusText: githubResponse.statusText,
                 headers: {
-                    ...getCORSHeaders(request, env),
                     'Content-Type': 'application/json',
                     'X-RateLimit-Limit': githubResponse.headers.get('X-RateLimit-Limit') || '',
                     'X-RateLimit-Remaining': githubResponse.headers.get('X-RateLimit-Remaining') || '',
@@ -209,10 +179,7 @@ export default {
                 error: error.message 
             }), { 
                 status: 500,
-                headers: {
-                    ...getCORSHeaders(request, env),
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Content-Type': 'application/json' }
             });
         }
     }
@@ -261,42 +228,4 @@ function getAuthToken(request, env) {
     }
     
     return null;
-}
-
-/**
- * 获取 CORS 头
- */
-function getCORSHeaders(request, env) {
-    const origin = request.headers.get('Origin') || '';
-    const allowedOrigins = env.ALLOWED_ORIGINS 
-        ? env.ALLOWED_ORIGINS.split(',') 
-        : (CONFIG.ALLOWED_ORIGINS || ['*']);
-    
-    // 验证 Origin
-    const allowOrigin = allowedOrigins.includes('*') || allowedOrigins.includes(origin) 
-        ? origin || '*' 
-        : allowedOrigins[0];
-    
-    return {
-        'Access-Control-Allow-Origin': allowOrigin,
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept, X-GitHub-Token',
-        'Access-Control-Max-Age': '86400',
-        'Access-Control-Expose-Headers': 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset',
-        'Vary': 'Origin',
-        'Cache-Control': 'no-cache'
-    };
-}
-
-/**
- * 处理 CORS 预检请求
- */
-function handleCORS(request, env) {
-    return new Response(null, {
-        status: 204,
-        headers: {
-            ...getCORSHeaders(request, env),
-            'Content-Length': '0'
-        }
-    });
 }

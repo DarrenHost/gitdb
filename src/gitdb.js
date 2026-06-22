@@ -1,11 +1,15 @@
 /**
  * GitDB - 基于 GitHub 的轻量级 JSON 数据库
- * @version 1.1.0
+ * @version 2.0.0
  * @author DarrenHost
  * @license MIT
  * 
- * 🔐 安全提示：不要将 token 硬编码在代码中！
- * 使用环境变量、.env 文件或 localStorage 安全存储
+ * 使用方式:
+ * const db = new GitDB({
+ *     owner: 'your-username',
+ *     repo: 'your-repo',
+ *     token: 'ghp_xxx'
+ * });
  */
 
 class GitDB {
@@ -14,107 +18,28 @@ class GitDB {
      * @param {Object} config - 配置对象
      * @param {string} config.owner - GitHub 用户名
      * @param {string} config.repo - 仓库名称
-     * @param {string} [config.token] - GitHub Token（可选，会从多处自动获取）
-     * @param {string} [config.apiBaseUrl] - API 基础 URL（可选，用于 Cloudflare Workers 代理）
+     * @param {string} config.token - GitHub Token
      * @param {string} [config.branch='main'] - 分支名称
      * @param {string} [config.dataDir='data'] - 数据目录
-     * 
-     * 🔐 Token 获取优先级：
-     * 1. config.token（直接传入）
-     * 2. process.env.GITDB_TOKEN（Node.js 环境变量）
-     * 3. window.GITDB_TOKEN（浏览器全局变量）
-     * 4. localStorage.getItem('gitdb_token')（浏览器本地存储）
-     * 5. .env 文件中的 GITDB_TOKEN（需要构建工具支持）
      */
     constructor(config) {
         if (!config.owner || !config.repo) {
             throw new Error('GitDB: Missing required config (owner, repo)');
         }
 
+        if (!config.token) {
+            throw new Error('GitDB: Token is required');
+        }
+
         this.owner = config.owner;
         this.repo = config.repo;
+        this.token = config.token;
         this.branch = config.branch || 'main';
         this.dataDir = config.dataDir || 'data';
-        
-        // 🔧 支持自定义 API 基础 URL（用于 Cloudflare Workers 代理）
-        this.apiBaseUrl = config.apiBaseUrl || null;
-
-        // 🔐 安全获取 token（多来源）
-        this.token = this._getSecureToken(config.token);
-
-        if (!this.token && !this.apiBaseUrl) {
-            throw new Error('GitDB: Token required. Please provide token via:\n' +
-                '  1. config.token\n' +
-                '  2. process.env.GITDB_TOKEN (Node.js)\n' +
-                '  3. window.GITDB_TOKEN (Browser)\n' +
-                '  4. localStorage.getItem("gitdb_token") (Browser)\n' +
-                '\n🔐 安全提示：不要将 token 硬编码在代码中！');
-        }
 
         // 本地缓存
         this.cache = new Map();
         this.CACHE_TTL = 5 * 60 * 1000; // 5 分钟
-    }
-
-    /**
-     * 🔐 安全获取 token（多来源 + 自动解混淆）
-     * @private
-     */
-    _getSecureToken(providedToken) {
-        let token = null;
-        
-        // 1. 优先使用直接传入的 token
-        if (providedToken) {
-            token = providedToken;
-        }
-        
-        // 2. Node.js 环境变量
-        if (!token && typeof process !== 'undefined' && process.env) {
-            const envToken = process.env.GITDB_TOKEN;
-            if (envToken) {
-                console.log('🔐 Token loaded from environment variable');
-                token = envToken;
-            }
-        }
-        
-        // 3. 浏览器全局变量
-        if (!token && typeof window !== 'undefined' && window.GITDB_TOKEN) {
-            console.log('🔐 Token loaded from window.GITDB_TOKEN');
-            token = window.GITDB_TOKEN;
-        }
-        
-        // 4. localStorage（浏览器）
-        if (!token && typeof localStorage !== 'undefined') {
-            const storedToken = localStorage.getItem('gitdb_token');
-            if (storedToken) {
-                console.log('🔐 Token loaded from localStorage');
-                token = storedToken;
-            }
-        }
-        
-        // 🔐 自动解混淆 token
-        if (token && typeof window !== 'undefined' && window.TokenMixer) {
-            const mixer = new window.TokenMixer();
-            if (mixer.isMixed(token)) {
-                console.log('🔐 Auto-unmixing token...');
-                try {
-                    token = mixer.unmix(token);
-                    console.log('✅ Token successfully unmixed');
-                } catch (error) {
-                    console.error('❌ Failed to unmix token:', error.message);
-                    // 解混淆失败，使用原始 token
-                }
-            }
-        }
-        
-        // 🔍 调试日志
-        if (token) {
-            const tokenPrefix = token.substring(0, 15) + '...';
-            console.log('✅ Token loaded:', tokenPrefix);
-            console.log('   Token type:', token.startsWith('github_pat_') ? 'Fine-grained' : 'Classic');
-        }
-        
-        return token;
     }
 
     // ==================== 内部方法 ====================
@@ -124,19 +49,13 @@ class GitDB {
      * @private
      */
     async _githubAPI(endpoint, method = 'GET', body = null) {
-        // 🔧 支持自定义 API 基础 URL（Cloudflare Workers 代理）
-        const baseUrl = this.apiBaseUrl || 'https://api.github.com';
-        const url = `${baseUrl}${endpoint}`;
+        const url = `https://api.github.com${endpoint}`;
         
-        // 🔧 修复 CORS 预检问题
-        // GitHub API 的 OPTIONS 请求不会携带 Authorization 头
-        // 解决：GET 请求不设置 Content-Type，避免触发预检
         const headers = {
             'Authorization': `token ${this.token}`,
             'Accept': 'application/vnd.github.v3+json'
         };
         
-        // 只有 POST/PUT/PATCH 才设置 Content-Type
         if (body && ['POST', 'PUT', 'PATCH'].includes(method)) {
             headers['Content-Type'] = 'application/json';
         }
@@ -186,7 +105,7 @@ class GitDB {
             return { data: jsonData, sha: data.sha };
         } catch (error) {
             if (error.message.includes('404')) {
-                return null; // 文件不存在
+                return null;
             }
             throw error;
         }
@@ -241,7 +160,6 @@ class GitDB {
         for (const key in query) {
             const condition = query[key];
 
-            // 处理操作符
             if (typeof condition === 'object') {
                 for (const op in condition) {
                     const value = condition[op];
@@ -260,7 +178,6 @@ class GitDB {
                     }
                 }
             } else {
-                // 简单相等
                 if (record[key] !== condition) return false;
             }
         }
@@ -276,7 +193,6 @@ class GitDB {
      * @param {string} options.name - 数据库名称
      * @param {string} [options.description] - 描述
      * @param {Object} [options.schema] - 数据结构定义
-     * @returns {Promise<Object>}
      */
     async create({ name, description = '', schema = null }) {
         if (!name) {
@@ -285,13 +201,11 @@ class GitDB {
 
         const filePath = `${this.dataDir}/${name}.json`;
 
-        // 检查是否已存在
         const existing = await this._getFileContent(filePath);
         if (existing) {
             throw new Error('DATABASE_EXISTS: Database already exists');
         }
 
-        // 创建初始数据
         const initialData = {
             _meta: {
                 name,
@@ -303,12 +217,7 @@ class GitDB {
             _data: []
         };
 
-        const result = await this._commitFile(
-            filePath,
-            initialData,
-            null,
-            `Create database: ${name}`
-        );
+        const result = await this._commitFile(filePath, initialData, null, `Create database: ${name}`);
 
         return {
             success: true,
@@ -328,7 +237,6 @@ class GitDB {
      * @param {string} options.name - 数据库名称
      * @param {Object|Array} options.data - 要添加的数据
      * @param {boolean} [options.autoId=true] - 是否自动添加 ID
-     * @returns {Promise<Object>}
      */
     async add({ name, data, autoId = true }) {
         if (!name) {
@@ -345,10 +253,8 @@ class GitDB {
             throw new Error('DATABASE_NOT_FOUND: Database not found');
         }
 
-        // 转换为数组
         const recordsToAdd = Array.isArray(data) ? data : [data];
 
-        // 生成 ID
         if (autoId) {
             const existingIds = file._data_.map(r => r.id).filter(id => id !== undefined);
             recordsToAdd.forEach((record, index) => {
@@ -358,16 +264,10 @@ class GitDB {
             });
         }
 
-        // 添加记录
         file._data_.push(...recordsToAdd);
         file._meta_.updatedAt = new Date().toISOString();
 
-        const result = await this._commitFile(
-            filePath,
-            file,
-            file.sha,
-            `Add ${recordsToAdd.length} record(s) to ${name}`
-        );
+        const result = await this._commitFile(filePath, file, file.sha, `Add ${recordsToAdd.length} record(s) to ${name}`);
 
         return {
             success: true,
@@ -389,11 +289,10 @@ class GitDB {
      * @param {Object} options.query - 查询条件
      * @param {Object} options.data - 要更新的数据
      * @param {boolean} [options.multi=false] - 是否更新多条
-     * @returns {Promise<Object>}
      */
     async update({ name, query, data, multi = false }) {
-        if (!dbName) {
-            throw new Error('GitDB.update: dbName is required');
+        if (!name) {
+            throw new Error('GitDB.update: name is required');
         }
         if (!query) {
             throw new Error('GitDB.update: query is required');
@@ -409,14 +308,12 @@ class GitDB {
             throw new Error('DATABASE_NOT_FOUND: Database not found');
         }
 
-        // 查找并更新记录
         let updatedCount = 0;
         for (const record of file._data_) {
             if (this._matchesQuery(record, query)) {
                 Object.assign(record, data);
                 updatedCount++;
-
-                if (!multi) break; // 只更新第一条
+                if (!multi) break;
             }
         }
 
@@ -426,12 +323,7 @@ class GitDB {
 
         file._meta_.updatedAt = new Date().toISOString();
 
-        const result = await this._commitFile(
-            filePath,
-            file,
-            file.sha,
-            `Update ${updatedCount} record(s) in ${dbName}`
-        );
+        const result = await this._commitFile(filePath, file, file.sha, `Update ${updatedCount} record(s) in ${name}`);
 
         return {
             success: true,
@@ -451,11 +343,10 @@ class GitDB {
      * @param {string} options.name - 数据库名称
      * @param {Object} options.query - 查询条件
      * @param {boolean} [options.multi=false] - 是否删除多条
-     * @returns {Promise<Object>}
      */
     async delete({ name, query, multi = false }) {
-        if (!dbName) {
-            throw new Error('GitDB.delete: dbName is required');
+        if (!name) {
+            throw new Error('GitDB.delete: name is required');
         }
         if (!query) {
             throw new Error('GitDB.delete: query is required');
@@ -468,12 +359,11 @@ class GitDB {
             throw new Error('DATABASE_NOT_FOUND: Database not found');
         }
 
-        // 查找并删除记录
         const initialLength = file._data_.length;
         file._data_ = file._data_.filter(record => {
             if (this._matchesQuery(record, query)) {
                 if (!multi) {
-                    multi = false; // 只删除第一条
+                    multi = false;
                     return false;
                 }
                 return false;
@@ -489,12 +379,7 @@ class GitDB {
 
         file._meta_.updatedAt = new Date().toISOString();
 
-        const result = await this._commitFile(
-            filePath,
-            file,
-            file.sha,
-            `Delete ${deletedCount} record(s) from ${dbName}`
-        );
+        const result = await this._commitFile(filePath, file, file.sha, `Delete ${deletedCount} record(s) from ${name}`);
 
         return {
             success: true,
@@ -512,11 +397,10 @@ class GitDB {
      * DROP - 删除数据库文件
      * @param {Object} options
      * @param {string} options.name - 数据库名称
-     * @returns {Promise<Object>}
      */
-    async drop({ dbName }) {
-        if (!dbName) {
-            throw new Error('GitDB.drop: dbName is required');
+    async drop({ name }) {
+        if (!name) {
+            throw new Error('GitDB.drop: name is required');
         }
 
         const filePath = `${this.dataDir}/${name}.json`;
@@ -526,18 +410,16 @@ class GitDB {
             throw new Error('DATABASE_NOT_FOUND: Database not found');
         }
 
-        // 删除文件
         const result = await this._githubAPI(
             `repos/${this.owner}/${this.repo}/contents/${filePath}`,
             'DELETE',
             {
-                message: `Drop database: ${dbName}`,
+                message: `Drop database: ${name}`,
                 sha: file.sha,
                 branch: this.branch
             }
         );
 
-        // 清除缓存
         const cacheKey = `${this.owner}/${this.repo}/${filePath}`;
         this.cache.delete(cacheKey);
 
@@ -560,7 +442,6 @@ class GitDB {
      * @param {Object} [options.query] - 查询条件
      * @param {number} [options.limit] - 返回数量限制
      * @param {number} [options.skip] - 跳过记录数
-     * @returns {Promise<Object>}
      */
     async find({ name, query = null, limit = null, skip = 0 }) {
         if (!name) {
@@ -574,12 +455,10 @@ class GitDB {
             throw new Error('DATABASE_NOT_FOUND: Database not found');
         }
 
-        // 过滤记录
         let records = file._data_.filter(record => this._matchesQuery(record, query));
 
         const totalCount = records.length;
 
-        // 分页
         if (skip > 0) {
             records = records.slice(skip);
         }
@@ -599,15 +478,7 @@ class GitDB {
     }
 
     /**
-     * 清除缓存
-     */
-    clearCache() {
-        this.cache.clear();
-    }
-
-    /**
      * SHOW - 获取数据库列表
-     * @returns {Promise<Array>}
      */
     async show() {
         try {
@@ -624,10 +495,17 @@ class GitDB {
                 }));
         } catch (error) {
             if (error.message.includes('404')) {
-                return []; // 目录不存在
+                return [];
             }
             throw error;
         }
+    }
+
+    /**
+     * 清除缓存
+     */
+    clearCache() {
+        this.cache.clear();
     }
 }
 

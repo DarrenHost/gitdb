@@ -219,13 +219,13 @@ db.find({ name: 'users', query: { status: { $in: ['active', 'pending'] } } });
 
 **在线使用:**
 ```
-https://darrenhost.github.io/gitdb/token-mixer.html
+https://darrenhost.github.io/gitdb/demo/token-mixer.html
 ```
 
 **本地使用:**
 ```bash
 # 下载项目后打开
-open token-mixer.html
+open demo/token-mixer.html
 ```
 
 **📖 详细指南：** [BROWSER_USAGE.md](BROWSER_USAGE.md)
@@ -360,14 +360,22 @@ python -m http.server 8000
 
 ```
 gitdb/
-├── gitdb.js              # 核心库
-├── token-mixer.js        # Token 混淆工具
-├── token-mixer.html      # 混淆工具页面
-├── index.html            # 演示页面
+├── src/                  # 核心源代码
+│   ├── gitdb.js          # 核心库
+│   ├── worker.js         # Cloudflare Worker 代理
+│   ├── token-mixer.js    # Token 混淆工具 (Node.js)
+│   └── github-file-editor.js  # GitHub 文件编辑器
+├── demo/                 # 演示页面
+│   ├── index.html        # 主演示页面
+│   ├── demo.html         # 功能演示
+│   ├── token-mixer.html  # Token 混淆工具
+│   └── verify-deployment.html  # Worker 部署验证工具
+├── bin/                  # 打包/压缩后的文件
 ├── README.md             # 项目说明
 ├── API.md                # API 文档
 ├── TOKEN_SECURITY.md     # 安全指南
-└── BROWSER_USAGE.md      # 浏览器使用指南
+├── BROWSER_USAGE.md      # 浏览器使用指南
+└── CLOUDFLARE_WORKER.md  # Worker 部署指南
 ```
 
 ---
@@ -393,11 +401,13 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 ## 🔗 相关链接
 
 - [GitHub 仓库](https://github.com/DarrenHost/gitdb)
-- [在线演示](https://darrenhost.github.io/gitdb/)
-- [Token 混淆工具](https://darrenhost.github.io/gitdb/token-mixer.html)
+- [在线演示](https://darrenhost.github.io/gitdb/demo/)
+- [Token 混淆工具](https://darrenhost.github.io/gitdb/demo/token-mixer.html)
+- [部署验证工具](https://darrenhost.github.io/gitdb/demo/verify-deployment.html)
 - [API 文档](API.md)
 - [安全指南](TOKEN_SECURITY.md)
 - [浏览器使用指南](BROWSER_USAGE.md)
+- [Worker 部署指南](CLOUDFLARE_WORKER.md)
 
 ---
 

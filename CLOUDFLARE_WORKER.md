@@ -36,8 +36,8 @@
 **步骤 2：配置代码**
 
 1. 点击 **Edit code**
-2. 复制 `worker.js` 和 `token-mixer.js` 的内容
-3. 粘贴到编辑器（需要两个文件）
+2. 复制 `src/worker.js` 的全部内容（已内联 TokenMixer，无需额外文件）
+3. 粘贴到编辑器
 4. 点击 **Save and deploy**
 
 **步骤 3：设置环境变量（可选）**
@@ -92,7 +92,7 @@ wrangler init gitdb-proxy
 
 ```toml
 name = "gitdb-proxy"
-main = "worker.js"
+main = "src/worker.js"
 compatibility_date = "2024-01-01"
 
 [vars]
@@ -319,7 +319,7 @@ wrangler tail gitdb-proxy
 ```toml
 # wrangler.toml
 name = "gitdb-proxy"
-main = "worker.js"
+main = "src/worker.js"
 compatibility_date = "2024-01-01"
 
 [vars]

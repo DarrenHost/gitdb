@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitDB Cloudflare Worker 部署验证</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: #00d4ff;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #888;
+            font-size: 0.95rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .card h2 {
+            color: #00d4ff;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #00d4ff;
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .form-group input::placeholder {
+            color: #666;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 6px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .test-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .test-item:hover {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .test-item.active {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.15);
+        }
+
+        .test-item h3 {
+            font-size: 14px;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .test-item p {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .result-box {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .result-box.success {
+            border-color: #00ff88;
+        }
+
+        .result-box.error {
+            border-color: #ff4444;
+        }
+
+        .result-box pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #00ff88;
+        }
+
+        .result-box.error pre {
+            color: #ff6b6b;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status-badge.success {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .status-badge.error {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff6b6b;
+        }
+
+        .status-badge.pending {
+            background: rgba(255, 255, 255, 0.1);
+            color: #888;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .info-box {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .info-box h4 {
+            color: #00d4ff;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-box li {
+            font-size: 13px;
+            color: #aaa;
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .info-box li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: #00d4ff;
+        }
+
+        .quick-fill {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 4px;
+            color: #00d4ff;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .quick-fill:hover {
+            background: rgba(0, 212, 255, 0.3);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        .stat-item .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .stat-item .label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 600px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 GitDB Worker 部署验证</h1>
+            <p>测试 Cloudflare Worker 代理是否正确部署并工作</p>
+        </header>
+
+        <!-- 配置区域 -->
+        <div class="card">
+            <h2>⚙️ 配置</h2>
+            
+            <div class="form-group">
+                <label for="workerUrl">Worker URL</label>
+                <input type="url" id="workerUrl" placeholder="https://your-worker.workers.dev" />
+                <small>你的 Cloudflare Worker 地址，例如：https://gitdb-proxy.your-subdomain.workers.dev</small>
+            </div>
+
+            <div class="form-group">
+                <label for="githubToken">GitHub Token <span class="quick-fill" onclick="useTestToken()">使用测试 Token</span></label>
+                <input type="password" id="githubToken" placeholder="ghp_xxx 或 github_pat_xxx" />
+                <small>支持明文 Token 或混淆后的 Token (gitdb_xxx)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="tokenMethod">Token 传递方式</label>
+                <select id="tokenMethod">
+                    <option value="url">URL 参数 (?token=xxx) - 推荐</option>
+                    <option value="header-auth">Authorization Header</option>
+                    <option value="header-custom">X-GitHub-Token Header</option>
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="runTest()" id="testBtn">
+                    <span>🧪 运行测试</span>
+                </button>
+                <button class="btn btn-primary" onclick="mixToken()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <span>🔐 混淆 Token</span>
+                </button>
+            </div>
+
+            <div class="info-box">
+                <h4>💡 提示</h4>
+                <ul>
+                    <li>首次部署后，可能需要等待 1-2 分钟让 Worker 生效</li>
+                    <li>如果测试失败，请检查 Worker 日志和 CORS 配置</li>
+                    <li>建议使用 URL 参数方式传递 Token，兼容性最好</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 测试项目 -->
+        <div class="card">
+            <h2>📋 测试项目 <span class="status-badge pending" id="overallStatus">等待开始</span></h2>
+            
+            <div class="test-grid">
+                <div class="test-item" onclick="selectTest('user')">
+                    <h3>👤 获取用户信息</h3>
+                    <p>GET /user</p>
+                </div>
+                <div class="test-item" onclick="selectTest('repos')">
+                    <h3>📦 获取仓库列表</h3>
+                    <p>GET /user/repos</p>
+                </div>
+                <div class="test-item" onclick="selectTest('repo')">
+                    <h3>📁 获取指定仓库</h3>
+                    <p>GET /repos/{owner}/{repo}</p>
+                </div>
+                <div class="test-item" onclick="selectTest('rate')">
+                    <h3>📊 速率限制</h3>
+                    <p>GET /rate_limit</p>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="customEndpoint">自定义端点</label>
+                <input type="text" id="customEndpoint" placeholder="/repos/darrenhost/gitdb" />
+                <small>输入任意 GitHub API 端点路径（不需要 /api/v3 前缀）</small>
+            </div>
+        </div>
+
+        <!-- 测试结果 -->
+        <div class="card">
+            <h2>📊 测试结果</h2>
+            
+            <div class="stats-grid" id="statsGrid" style="display: none;">
+                <div class="stat-item">
+                    <div class="value" id="statusCode">-</div>
+                    <div class="label">状态码</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="responseTime">-</div>
+                    <div class="label">响应时间</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="rateLimit">-</div>
+                    <div class="label">剩余请求</div>
+                </div>
+            </div>
+
+            <div class="result-box" id="resultBox" style="margin-top: 20px;">
+                <pre id="resultContent">等待测试...</pre>
+            </div>
+        </div>
+
+        <!-- Token 混淆工具 -->
+        <div class="card" id="mixerCard" style="display: none;">
+            <h2>🔐 Token 混淆工具</h2>
+            
+            <div class="form-group">
+                <label for="originalToken">原始 Token</label>
+                <input type="password" id="originalToken" placeholder="ghp_xxx" />
+            </div>
+
+            <div class="form-group">
+                <label>混淆后的 Token</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="mixedToken" readonly placeholder="gitdb_xxx" />
+                    <button class="btn btn-primary" onclick="copyMixedToken()" style="padding: 12px 20px;">
+                        📋 复制
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════
+        // 🔐 TokenMixer 混淆工具（与 Worker 相同算法）
+        // ═══════════════════════════════════════════════════════════
+        class TokenMixer {
+            static PREFIX = 'gitdb_';
+            
+            static CHAR_MAP = {
+                '0': 'a', '1': 'b', '2': 'c', '3': 'd', '4': 'e',
+                '5': 'f', '6': 'g', '7': 'h', '8': 'i', '9': 'j',
+                'a': 'k', 'b': 'l', 'c': 'm', 'd': 'n', 'e': 'o',
+                'f': 'p', 'g': 'q', 'h': 'r', 'i': 's', 'j': 't',
+                'k': 'u', 'l': 'v', 'm': 'w', 'n': 'x', 'o': 'y',
+                'p': 'z', 'q': 'A', 'r': 'B', 's': 'C', 't': 'D',
+                'u': 'E', 'v': 'F', 'w': 'G', 'x': 'H', 'y': 'I',
+                'z': 'J', 'A': 'K', 'B': 'L', 'C': 'M', 'D': 'N',
+                'E': 'O', 'F': 'P', 'G': 'Q', 'H': 'R', 'I': 'S',
+                'J': 'T', 'K': 'U', 'L': 'V', 'M': 'W', 'N': 'X',
+                'O': 'Y', 'P': 'Z', 'Q': '0', 'R': '1', 'S': '2',
+                'T': '3', 'U': '4', 'V': '5', 'W': '6', 'X': '7',
+                'Y': '8', 'Z': '9', '_': '-', '-': '_'
+            };
+            
+            static REVERSE_MAP = {};
+            
+            constructor() {
+                if (Object.keys(TokenMixer.REVERSE_MAP).length === 0) {
+                    for (const [key, value] of Object.entries(TokenMixer.CHAR_MAP)) {
+                        TokenMixer.REVERSE_MAP[value] = key;
+                    }
+                }
+            }
+            
+            mix(token) {
+                if (!token || typeof token !== 'string') {
+                    throw new Error('Invalid token');
+                }
+                
+                const validPrefixes = ['ghp_', 'gho_', 'ghu_', 'ghs_', 'ghr_', 'github_pat_'];
+                const isValidFormat = validPrefixes.some(prefix => token.startsWith(prefix));
+                
+                if (!isValidFormat) {
+                    throw new Error('Invalid token format');
+                }
+                
+                let mixed = TokenMixer.PREFIX;
+                for (const char of token) {
+                    mixed += TokenMixer.CHAR_MAP[char] || char;
+                }
+                
+                mixed += this._generateChecksum(token);
+                return mixed;
+            }
+            
+            _generateChecksum(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    const char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash).toString(16).padStart(4, '0');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 🌐 测试逻辑
+        // ═══════════════════════════════════════════════════════════
+        
+        let selectedTestType = 'user';
+        
+        function selectTest(type) {
+            selectedTestType = type;
+            
+            // 更新 UI
+            document.querySelectorAll('.test-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // 设置自定义端点
+            const endpointMap = {
+                'user': '/user',
+                'repos': '/user/repos',
+                'repo': '/repos/darrenhost/gitdb',
+                'rate': '/rate_limit'
+            };
+            document.getElementById('customEndpoint').value = endpointMap[type];
+        }
+
+        async function runTest() {
+            const workerUrl = document.getElementById('workerUrl').value.trim();
+            const token = document.getElementById('githubToken').value.trim();
+            const tokenMethod = document.getElementById('tokenMethod').value;
+            const endpoint = document.getElementById('customEndpoint').value.trim();
+            
+            // 验证输入
+            if (!workerUrl) {
+                showError('请输入 Worker URL');
+                return;
+            }
+            
+            if (!token) {
+                showError('请输入 GitHub Token');
+                return;
+            }
+            
+            if (!endpoint) {
+                showError('请输入 API 端点路径');
+                return;
+            }
+            
+            // 更新 UI
+            const testBtn = document.getElementById('testBtn');
+            testBtn.disabled = true;
+            testBtn.innerHTML = '<span class="loading"></span> 测试中...';
+            document.getElementById('overallStatus').className = 'status-badge pending';
+            document.getElementById('overallStatus').textContent = '测试中...';
+            document.getElementById('resultBox').className = 'result-box';
+            document.getElementById('resultContent').textContent = '正在发送请求...';
+            document.getElementById('statsGrid').style.display = 'none';
+            
+            // 构建请求 URL
+            let requestUrl = workerUrl.replace(/\/$/, '') + '/proxy' + endpoint;
+            
+            // 根据传递方式添加 Token
+            const headers = {
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'GitDB-Test/1.0'
+            };
+            
+            if (tokenMethod === 'url') {
+                const separator = requestUrl.includes('?') ? '&' : '?';
+                requestUrl += `${separator}token=${encodeURIComponent(token)}`;
+            } else if (tokenMethod === 'header-auth') {
+                headers['Authorization'] = `token ${token}`;
+            } else if (tokenMethod === 'header-custom') {
+                headers['X-GitHub-Token'] = token;
+            }
+            
+            // 记录开始时间
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch(requestUrl, {
+                    method: 'GET',
+                    headers
+                });
+                
+                const endTime = performance.now();
+                const responseTime = (endTime - startTime).toFixed(0);
+                
+                // 获取响应数据
+                const data = await response.json();
+                
+                // 更新 UI
+                document.getElementById('statsGrid').style.display = 'grid';
+                document.getElementById('statusCode').textContent = response.status;
+                document.getElementById('statusCode').style.color = response.ok ? '#00ff88' : '#ff6b6b';
+                document.getElementById('responseTime').textContent = `${responseTime}ms`;
+                
+                // 获取速率限制信息
+                const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
+                document.getElementById('rateLimit').textContent = rateLimitRemaining || 'N/A';
+                
+                if (response.ok) {
+                    document.getElementById('overallStatus').className = 'status-badge success';
+                    document.getElementById('overallStatus').textContent = '✓ 测试通过';
+                    document.getElementById('resultBox').className = 'result-box success';
+                    document.getElementById('resultContent').textContent = JSON.stringify(data, null, 2);
+                } else {
+                    document.getElementById('overallStatus').className = 'status-badge error';
+                    document.getElementById('overallStatus').textContent = '✗ 测试失败';
+                    document.getElementById('resultBox').className = 'result-box error';
+                    document.getElementById('resultContent').textContent = JSON.stringify(data, null, 2);
+                }
+                
+            } catch (error) {
+                document.getElementById('overallStatus').className = 'status-badge error';
+                document.getElementById('overallStatus').textContent = '✗ 请求失败';
+                document.getElementById('resultBox').className = 'result-box error';
+                document.getElementById('resultContent').textContent = `请求失败：${error.message}\n\n可能原因：\n1. Worker URL 不正确\n2. CORS 配置问题\n3. 网络连接问题\n4. Worker 未正确部署`;
+            } finally {
+                testBtn.disabled = false;
+                testBtn.innerHTML = '<span>🧪 运行测试</span>';
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('resultBox').className = 'result-box error';
+            document.getElementById('resultContent').textContent = `❌ ${message}`;
+            document.getElementById('overallStatus').className = 'status-badge error';
+            document.getElementById('overallStatus').textContent = '✗ 输入错误';
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 🔐 Token 混淆功能
+        // ═══════════════════════════════════════════════════════════
+        
+        function mixToken() {
+            const originalToken = document.getElementById('originalToken').value.trim();
+            
+            if (!originalToken) {
+                alert('请输入原始 Token');
+                return;
+            }
+            
+            try {
+                const mixer = new TokenMixer();
+                const mixed = mixer.mix(originalToken);
+                document.getElementById('mixedToken').value = mixed;
+                document.getElementById('mixerCard').style.display = 'block';
+                document.getElementById('mixerCard').scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                alert('Token 格式错误：' + error.message);
+            }
+        }
+
+        function copyMixedToken() {
+            const mixedToken = document.getElementById('mixedToken');
+            mixedToken.select();
+            document.execCommand('copy');
+            alert('已复制到剪贴板！');
+        }
+
+        function useTestToken() {
+            // 这里可以预置一个测试 Token（如果有的话）
+            // 为了安全，实际使用时应该让用户自己输入
+            alert('请输入你的 GitHub Token\n\n获取方式：\n1. 访问 https://github.com/settings/tokens\n2. 生成新 Token (classic)\n3. 勾选 repo 权限\n4. 复制 Token 到此处');
+        }
+
+        // 初始化：选择第一个测试
+        selectTest('user');
+    </script>
+</body>
+</html>

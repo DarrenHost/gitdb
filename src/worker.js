@@ -21,12 +21,12 @@
 // 🔧 配置区域
 // ═══════════════════════════════════════════════════════════
 const CONFIG = {
-    // GitHub 配置
-    GITHUB_OWNER: '',      // GitHub 用户名
-    GITHUB_REPO: '',       // 仓库名称
-    GITHUB_TOKEN: '',      // GitHub Token（或通过环境变量）
-    GITHUB_BRANCH: 'main', // 分支名称
-    DATA_DIR: 'data'       // 数据目录
+    // GitDB 配置
+    GITDB_OWNER: '',       // 仓库所有者（GitHub 用户名）
+    GITDB_REPO: '',        // 仓库名称
+    GITDB_TOKEN: '',       // GitDB Token（支持混淆格式 gitdb_xxx）
+    GITDB_BRANCH: 'main',  // 分支名称
+    GITDB_DATA_DIR: 'data' // 数据目录
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -436,15 +436,15 @@ async function handleRequest(request, db) {
 export default {
     async fetch(request, env, ctx) {
         // 获取配置（环境变量优先）
-        const owner = env.GITHUB_OWNER || CONFIG.GITHUB_OWNER;
-        const repo = env.GITHUB_REPO || CONFIG.GITHUB_REPO;
-        const branch = env.GITHUB_BRANCH || CONFIG.GITHUB_BRANCH;
-        const dataDir = env.DATA_DIR || CONFIG.DATA_DIR;
+        const owner = env.GITDB_OWNER || CONFIG.GITDB_OWNER;
+        const repo = env.GITDB_REPO || CONFIG.GITDB_REPO;
+        const branch = env.GITDB_BRANCH || CONFIG.GITDB_BRANCH;
+        const dataDir = env.GITDB_DATA_DIR || CONFIG.GITDB_DATA_DIR;
         
         // 获取并解混淆 Token
-        let token = env.GITHUB_TOKEN || CONFIG.GITHUB_TOKEN;
+        let token = env.GITDB_TOKEN || CONFIG.GITDB_TOKEN;
         if (!token) {
-            return errorResponse('GITHUB_TOKEN not configured', 500);
+            return errorResponse('GITDB_TOKEN not configured', 500);
         }
         
         try {
@@ -456,7 +456,7 @@ export default {
         
         // 验证必要配置
         if (!owner || !repo) {
-            return errorResponse('Missing GITHUB_OWNER or GITHUB_REPO configuration', 500);
+            return errorResponse('Missing GITDB_OWNER or GITDB_REPO configuration', 500);
         }
         
         // 创建 GitDB 实例

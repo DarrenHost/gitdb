@@ -1,33 +1,39 @@
 /**
- * GitDB GitHub API Proxy - Cloudflare Workers
+ * GitDB Server - Cloudflare Workers 完整实现
  * 
- * 🚀 一键部署：复制全部代码粘贴到 Cloudflare Workers 编辑器
+ * 🚀 功能完整：包含所有 GitDB 核心功能（增删改查）
+ * 📦 开箱即用：部署后直接通过 HTTP API 使用
+ * 🔐 Token 支持：混淆 Token 自动解混淆
  * 
- * 📋 配置说明（只需修改下方 CONFIG 对象）：
- *   - GITHUB_TOKEN: 你的 GitHub Token
+ * 📖 API 文档：
+ *   POST   /create     - 创建数据库
+ *   GET    /show       - 获取数据库列表
+ *   POST   /add        - 添加记录
+ *   POST   /find       - 查询记录
+ *   POST   /update     - 更新记录
+ *   POST   /delete     - 删除记录
+ *   POST   /drop       - 删除数据库
  * 
- * 📖 使用示例：
- *   GET  https://your-worker.workers.dev/proxy/repos/darrenhost/gitdb
- * 
- * 部署教程：https://developers.cloudflare.com/workers/
+ * 🔧 配置：修改下方 CONFIG 对象
  */
 
 // ═══════════════════════════════════════════════════════════
-// 🔧 配置区域 - 只需修改这里
+// 🔧 配置区域
 // ═══════════════════════════════════════════════════════════
 const CONFIG = {
-    // GitHub Token
-    // 格式：ghp_xxx 或 github_pat_xxx
-    // ⚠️ 建议通过 Cloudflare 环境变量设置，不要硬编码在这里
-    GITHUB_TOKEN: ''
+    // GitHub 配置
+    GITHUB_OWNER: '',      // GitHub 用户名
+    GITHUB_REPO: '',       // 仓库名称
+    GITHUB_TOKEN: '',      // GitHub Token（或通过环境变量）
+    GITHUB_BRANCH: 'main', // 分支名称
+    DATA_DIR: 'data'       // 数据目录
 };
 
 // ═══════════════════════════════════════════════════════════
-// 🔐 TokenMixer 混淆工具（内联）
+// 🔐 TokenMixer 混淆工具
 // ═══════════════════════════════════════════════════════════
 class TokenMixer {
     static PREFIX = 'gitdb_';
-    
     static CHAR_MAP = {
         '0': 'a', '1': 'b', '2': 'c', '3': 'd', '4': 'e',
         '5': 'f', '6': 'g', '7': 'h', '8': 'i', '9': 'j',
@@ -43,7 +49,6 @@ class TokenMixer {
         'T': '3', 'U': '4', 'V': '5', 'W': '6', 'X': '7',
         'Y': '8', 'Z': '9', '_': '-', '-': '_'
     };
-    
     static REVERSE_MAP = {};
     
     constructor() {
@@ -54,48 +59,19 @@ class TokenMixer {
         }
     }
     
-    mix(token) {
-        if (!token || typeof token !== 'string') {
-            throw new Error('Invalid token');
-        }
-        
-        const validPrefixes = ['ghp_', 'gho_', 'ghu_', 'ghs_', 'ghr_', 'github_pat_'];
-        const isValidFormat = validPrefixes.some(prefix => token.startsWith(prefix));
-        
-        if (!isValidFormat) {
-            throw new Error('Invalid token format');
-        }
-        
-        let mixed = TokenMixer.PREFIX;
-        for (const char of token) {
-            mixed += TokenMixer.CHAR_MAP[char] || char;
-        }
-        
-        mixed += this._generateChecksum(token);
-        return mixed;
-    }
-    
     unmix(mixedToken) {
-        if (!mixedToken || typeof mixedToken !== 'string') {
-            throw new Error('Invalid mixed token');
+        if (!mixedToken?.startsWith(TokenMixer.PREFIX)) {
+            return mixedToken;
         }
-        
-        if (!mixedToken.startsWith(TokenMixer.PREFIX)) {
-            throw new Error('Invalid token format: missing prefix');
-        }
-        
         const core = mixedToken.slice(TokenMixer.PREFIX.length, -4);
         const checksum = mixedToken.slice(-4);
-        
         let original = '';
         for (const char of core) {
             original += TokenMixer.REVERSE_MAP[char] || char;
         }
-        
         if (this._generateChecksum(original) !== checksum) {
             throw new Error('Invalid token checksum');
         }
-        
         return original;
     }
     
@@ -108,124 +84,385 @@ class TokenMixer {
         }
         return Math.abs(hash).toString(16).padStart(4, '0');
     }
-    
-    isMixed(token) {
-        return token && token.startsWith(TokenMixer.PREFIX);
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🗄️ GitDB 核心实现
+// ═══════════════════════════════════════════════════════════
+class GitDBCore {
+    constructor(owner, repo, token, branch = 'main', dataDir = 'data') {
+        this.owner = owner;
+        this.repo = repo;
+        this.token = token;
+        this.branch = branch;
+        this.dataDir = dataDir;
+        this.baseUrl = 'https://api.github.com';
+        this.cache = new Map();
     }
     
-    autoUnmix(token) {
-        if (this.isMixed(token)) {
-            try {
-                return this.unmix(token);
-            } catch (e) {
-                console.error('Failed to unmix token:', e);
+    async _request(endpoint, method = 'GET', body = null) {
+        const url = `${this.baseUrl}${endpoint}`;
+        const headers = {
+            'Authorization': `token ${this.token}`,
+            'Accept': 'application/vnd.github.v3+json'
+        };
+        
+        if (body) {
+            headers['Content-Type'] = 'application/json';
+        }
+        
+        const response = await fetch(url, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null
+        });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: response.statusText }));
+            throw new Error(`GitHub API: ${error.message || response.statusText}`);
+        }
+        
+        return response.json();
+    }
+    
+    async _getFile(filePath) {
+        const cacheKey = filePath;
+        const cached = this.cache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < 300000) {
+            return cached;
+        }
+        
+        try {
+            const data = await this._request(
+                `/repos/${this.owner}/${this.repo}/contents/${filePath}?ref=${this.branch}`
+            );
+            const content = JSON.parse(atob(data.content));
+            const result = { data, sha: data.sha, content };
+            this.cache.set(cacheKey, { ...result, timestamp: Date.now() });
+            return result;
+        } catch (e) {
+            if (e.message.includes('404')) return null;
+            throw e;
+        }
+    }
+    
+    async _commitFile(filePath, content, sha, message) {
+        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2))));
+        const result = await this._request(
+            `/repos/${this.owner}/${this.repo}/contents/${filePath}`,
+            'PUT',
+            { message, content: encoded, sha, branch: this.branch }
+        );
+        this.cache.delete(filePath);
+        return result;
+    }
+    
+    _generateId(existingIds) {
+        const maxId = existingIds.reduce((max, id) => Math.max(max, id || 0), 0);
+        return maxId + 1;
+    }
+    
+    _matches(record, query) {
+        if (!query) return true;
+        for (const key in query) {
+            const cond = query[key];
+            if (typeof cond === 'object') {
+                for (const op in cond) {
+                    const val = cond[op];
+                    const recVal = record[key];
+                    switch (op) {
+                        case '$eq': if (recVal !== val) return false; break;
+                        case '$ne': if (recVal === val) return false; break;
+                        case '$gt': if (recVal <= val) return false; break;
+                        case '$gte': if (recVal < val) return false; break;
+                        case '$lt': if (recVal >= val) return false; break;
+                        case '$lte': if (recVal > val) return false; break;
+                        case '$in': if (!val.includes(recVal)) return false; break;
+                        case '$nin': if (val.includes(recVal)) return false; break;
+                    }
+                }
+            } else {
+                if (record[key] !== cond) return false;
             }
         }
-        return token;
+        return true;
+    }
+    
+    // ========== 公开 API ==========
+    
+    async create({ name, description = '', schema = null }) {
+        const filePath = `${this.dataDir}/${name}.json`;
+        const existing = await this._getFile(filePath);
+        if (existing) {
+            throw new Error('DATABASE_EXISTS');
+        }
+        
+        const initialData = {
+            _meta_: { name, description, schema, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+            _data_: []
+        };
+        
+        const result = await this._commitFile(filePath, initialData, null, `Create database: ${name}`);
+        return { success: true, message: '数据库创建成功', data: { name, filePath, commitSha: result.commit.sha } };
+    }
+    
+    async show() {
+        try {
+            const files = await this._request(`/repos/${this.owner}/${this.repo}/contents/${this.dataDir}?ref=${this.branch}`);
+            return files
+                .filter(f => f.name.endsWith('.json'))
+                .map(f => ({ name: f.name.replace('.json', ''), path: f.path, size: f.size }));
+        } catch (e) {
+            if (e.message.includes('404')) return [];
+            throw e;
+        }
+    }
+    
+    async add({ name, data, autoId = true }) {
+        const filePath = `${this.dataDir}/${name}.json`;
+        const file = await this._getFile(filePath);
+        if (!file) throw new Error('DATABASE_NOT_FOUND');
+        
+        const records = Array.isArray(data) ? data : [data];
+        if (autoId) {
+            const existingIds = file.content._data_.map(r => r.id).filter(id => id !== undefined);
+            records.forEach((r, i) => { if (r.id === undefined) r.id = this._generateId(existingIds) + i; });
+        }
+        
+        file.content._data_.push(...records);
+        file.content._meta_.updatedAt = new Date().toISOString();
+        
+        const result = await this._commitFile(filePath, file.content, file.sha, `Add ${records.length} record(s) to ${name}`);
+        return { success: true, message: '记录添加成功', data: { name, addedCount: records.length, ids: records.map(r => r.id), commitSha: result.commit.sha } };
+    }
+    
+    async find({ name, query = null, limit = null, skip = 0 }) {
+        const filePath = `${this.dataDir}/${name}.json`;
+        const file = await this._getFile(filePath);
+        if (!file) throw new Error('DATABASE_NOT_FOUND');
+        
+        let records = file.content._data_.filter(r => this._matches(r, query));
+        const total = records.length;
+        if (skip > 0) records = records.slice(skip);
+        if (limit !== null) records = records.slice(0, limit);
+        
+        return { success: true, data: { name, totalCount: total, returnedCount: records.length, records } };
+    }
+    
+    async update({ name, query, data, multi = false }) {
+        const filePath = `${this.dataDir}/${name}.json`;
+        const file = await this._getFile(filePath);
+        if (!file) throw new Error('DATABASE_NOT_FOUND');
+        
+        let count = 0;
+        for (const record of file.content._data_) {
+            if (this._matches(record, query)) {
+                Object.assign(record, data);
+                count++;
+                if (!multi) break;
+            }
+        }
+        
+        if (count === 0) throw new Error('RECORD_NOT_FOUND');
+        
+        file.content._meta_.updatedAt = new Date().toISOString();
+        const result = await this._commitFile(filePath, file.content, file.sha, `Update ${count} record(s) in ${name}`);
+        return { success: true, message: '记录更新成功', data: { name, updatedCount: count, commitSha: result.commit.sha } };
+    }
+    
+    async delete({ name, query, multi = false }) {
+        const filePath = `${this.dataDir}/${name}.json`;
+        const file = await this._getFile(filePath);
+        if (!file) throw new Error('DATABASE_NOT_FOUND');
+        
+        const initialLen = file.content._data_.length;
+        let deleted = false;
+        file.content._data_ = file.content._data_.filter(r => {
+            if (this._matches(r, query)) {
+                if (!multi || !deleted) {
+                    deleted = true;
+                    return false;
+                }
+                return !multi;
+            }
+            return true;
+        });
+        
+        const count = initialLen - file.content._data_.length;
+        if (count === 0) throw new Error('RECORD_NOT_FOUND');
+        
+        file.content._meta_.updatedAt = new Date().toISOString();
+        const result = await this._commitFile(filePath, file.content, file.sha, `Delete ${count} record(s) from ${name}`);
+        return { success: true, message: '记录删除成功', data: { name, deletedCount: count, commitSha: result.commit.sha } };
+    }
+    
+    async drop({ name }) {
+        const filePath = `${this.dataDir}/${name}.json`;
+        const file = await this._getFile(filePath);
+        if (!file) throw new Error('DATABASE_NOT_FOUND');
+        
+        const result = await this._request(
+            `/repos/${this.owner}/${this.repo}/contents/${filePath}`,
+            'DELETE',
+            { message: `Drop database: ${name}`, sha: file.sha, branch: this.branch }
+        );
+        
+        return { success: true, message: '数据库已删除', data: { name, filePath, commitSha: result.commit.sha } };
     }
 }
 
 // ═══════════════════════════════════════════════════════════
-// 🌐 Cloudflare Worker 主逻辑
+// 🌐 HTTP Router & Controller
+// ═══════════════════════════════════════════════════════════
+function jsonResponse(data, status = 200) {
+    return new Response(JSON.stringify(data, null, 2), {
+        status,
+        headers: { 'Content-Type': 'application/json' }
+    });
+}
+
+function errorResponse(message, status = 400) {
+    return jsonResponse({ success: false, error: message }, status);
+}
+
+async function handleRequest(request, db) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/\/$/, '');
+    const method = request.method;
+    
+    // 获取请求体
+    let body = {};
+    if (['POST', 'PUT', 'PATCH'].includes(method)) {
+        try {
+            body = await request.json();
+        } catch (e) {
+            return errorResponse('Invalid JSON body', 400);
+        }
+    }
+    
+    // 路由处理
+    try {
+        // GET 请求
+        if (method === 'GET') {
+            if (path === '/show') {
+                const result = await db.show();
+                return jsonResponse({ success: true, data: result });
+            }
+            if (path === '/health') {
+                return jsonResponse({ status: 'ok', timestamp: new Date().toISOString() });
+            }
+            return errorResponse('Not Found', 404);
+        }
+        
+        // POST 请求
+        if (method === 'POST') {
+            // Create: POST /create { name, description?, schema? }
+            if (path === '/create') {
+                if (!body.name) return errorResponse('Missing required field: name');
+                const result = await db.create(body);
+                return jsonResponse(result);
+            }
+            
+            // Add: POST /add { name, data, autoId? }
+            if (path === '/add') {
+                if (!body.name) return errorResponse('Missing required field: name');
+                if (!body.data) return errorResponse('Missing required field: data');
+                const result = await db.add(body);
+                return jsonResponse(result);
+            }
+            
+            // Find: POST /find { name, query?, limit?, skip? }
+            if (path === '/find') {
+                if (!body.name) return errorResponse('Missing required field: name');
+                const result = await db.find(body);
+                return jsonResponse(result);
+            }
+            
+            // Update: POST /update { name, query, data, multi? }
+            if (path === '/update') {
+                if (!body.name) return errorResponse('Missing required field: name');
+                if (!body.query) return errorResponse('Missing required field: query');
+                if (!body.data) return errorResponse('Missing required field: data');
+                const result = await db.update(body);
+                return jsonResponse(result);
+            }
+            
+            // Delete: POST /delete { name, query, multi? }
+            if (path === '/delete') {
+                if (!body.name) return errorResponse('Missing required field: name');
+                if (!body.query) return errorResponse('Missing required field: query');
+                const result = await db.delete(body);
+                return jsonResponse(result);
+            }
+            
+            // Drop: POST /drop { name }
+            if (path === '/drop') {
+                if (!body.name) return errorResponse('Missing required field: name');
+                const result = await db.drop(body);
+                return jsonResponse(result);
+            }
+            
+            return errorResponse('Not Found', 404);
+        }
+        
+        // OPTIONS 预检请求
+        if (method === 'OPTIONS') {
+            return new Response(null, {
+                status: 204,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                }
+            });
+        }
+        
+        return errorResponse('Method Not Allowed', 405);
+    } catch (e) {
+        console.error('Error:', e.message);
+        const statusMap = {
+            'DATABASE_EXISTS': 409,
+            'DATABASE_NOT_FOUND': 404,
+            'RECORD_NOT_FOUND': 404
+        };
+        const status = statusMap[e.message] || 500;
+        return errorResponse(e.message, status);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🚀 Worker 入口
 // ═══════════════════════════════════════════════════════════
 export default {
     async fetch(request, env, ctx) {
-        // 获取请求路径
-        const url = new URL(request.url);
-        const path = url.pathname.replace('/proxy', '').replace('/github', '');
+        // 获取配置（环境变量优先）
+        const owner = env.GITHUB_OWNER || CONFIG.GITHUB_OWNER;
+        const repo = env.GITHUB_REPO || CONFIG.GITHUB_REPO;
+        const branch = env.GITHUB_BRANCH || CONFIG.GITHUB_BRANCH;
+        const dataDir = env.DATA_DIR || CONFIG.DATA_DIR;
         
-        // 🔐 获取认证 Token
-        const token = getAuthToken(request, env);
-        
+        // 获取并解混淆 Token
+        let token = env.GITHUB_TOKEN || CONFIG.GITHUB_TOKEN;
         if (!token) {
-            return new Response('Unauthorized: Missing or invalid token. Use ?token=gitdb_xxx or set GITHUB_TOKEN in environment.', { 
-                status: 401
-            });
+            return errorResponse('GITHUB_TOKEN not configured', 500);
         }
-        
-        // 构建 GitHub API 请求
-        const githubUrl = `https://api.github.com${path}`;
-        const githubRequest = new Request(githubUrl, {
-            method: request.method,
-            headers: {
-                'Authorization': `token ${token}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json',
-                'User-Agent': 'GitDB-Proxy/1.0'
-            },
-            body: request.method !== 'GET' ? await request.text() : undefined
-        });
         
         try {
-            // 发送请求到 GitHub API
-            const githubResponse = await fetch(githubRequest);
-            
-            // 创建响应
-            const response = new Response(githubResponse.body, {
-                status: githubResponse.status,
-                statusText: githubResponse.statusText,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-RateLimit-Limit': githubResponse.headers.get('X-RateLimit-Limit') || '',
-                    'X-RateLimit-Remaining': githubResponse.headers.get('X-RateLimit-Remaining') || '',
-                    'X-RateLimit-Reset': githubResponse.headers.get('X-RateLimit-Reset') || ''
-                }
-            });
-            
-            return response;
-        } catch (error) {
-            return new Response(JSON.stringify({ 
-                message: 'Proxy error', 
-                error: error.message 
-            }), { 
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
+            const mixer = new TokenMixer();
+            token = mixer.unmix(token);
+        } catch (e) {
+            // Token 不是混淆格式，直接使用
         }
+        
+        // 验证必要配置
+        if (!owner || !repo) {
+            return errorResponse('Missing GITHUB_OWNER or GITHUB_REPO configuration', 500);
+        }
+        
+        // 创建 GitDB 实例
+        const db = new GitDBCore(owner, repo, token, branch, dataDir);
+        
+        // 处理请求
+        return handleRequest(request, db);
     }
 };
-
-// ═══════════════════════════════════════════════════════════
-// 🔧 辅助函数
-// ═══════════════════════════════════════════════════════════
-
-/**
- * 获取认证 Token（支持多种方式）
- */
-function getAuthToken(request, env) {
-    const mixer = new TokenMixer();
-    
-    // 方式 1: 从 URL 查询参数获取 (?token=gitdb_xxx)
-    const url = new URL(request.url);
-    const urlToken = url.searchParams.get('token');
-    if (urlToken) {
-        return mixer.autoUnmix(urlToken);
-    }
-    
-    // 方式 2: 从 Authorization Header 获取
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader) {
-        const token = authHeader.startsWith('token ') || authHeader.startsWith('Bearer ') 
-            ? authHeader.split(' ')[1] 
-            : authHeader;
-        return mixer.autoUnmix(token);
-    }
-    
-    // 方式 3: 从 X-GitHub-Token Header 获取
-    const tokenHeader = request.headers.get('X-GitHub-Token');
-    if (tokenHeader) {
-        return mixer.autoUnmix(tokenHeader);
-    }
-    
-    // 方式 4: 从环境变量获取（最安全）
-    if (env.GITHUB_TOKEN) {
-        return env.GITHUB_TOKEN;
-    }
-    
-    // 方式 5: 从 CONFIG 配置获取（开发环境）
-    if (CONFIG.GITHUB_TOKEN) {
-        return CONFIG.GITHUB_TOKEN;
-    }
-    
-    return null;
-}

@@ -453,12 +453,16 @@ export default {
             return errorResponse('GITDB_TOKEN not configured', 500);
         }
         
-        try {
-            const mixer = new TokenMixer();
-            token = mixer.unmix(token);
-        } catch (e) {
-            // Token 不是混淆格式，直接使用
+        // 只有 gitdb_ 开头的 Token 才需要解混淆
+        if (token.startsWith('gitdb_')) {
+            try {
+                const mixer = new TokenMixer();
+                token = mixer.unmix(token);
+            } catch (e) {
+                return errorResponse('Invalid gitdb_ token format: ' + e.message, 500);
+            }
         }
+        // 其他格式（ghp_, github_pat_ 等）直接使用
         
         // 验证必要配置
         if (!owner || !repo) {

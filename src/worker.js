@@ -317,7 +317,12 @@ class GitDBCore {
 function jsonResponse(data, status = 200) {
     return new Response(JSON.stringify(data, null, 2), {
         status,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-GitDB-Token'
+        }
     });
 }
 
@@ -329,6 +334,19 @@ async function handleRequest(request, db) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/$/, '');
     const method = request.method;
+    
+    // 处理 CORS 预检请求
+    if (method === 'OPTIONS') {
+        return new Response(null, {
+            status: 204,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-GitDB-Token',
+                'Access-Control-Max-Age': '86400'
+            }
+        });
+    }
     
     // 获取请求体
     let body = {};
@@ -403,18 +421,6 @@ async function handleRequest(request, db) {
             }
             
             return errorResponse('Not Found', 404);
-        }
-        
-        // OPTIONS 预检请求
-        if (method === 'OPTIONS') {
-            return new Response(null, {
-                status: 204,
-                headers: {
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-                }
-            });
         }
         
         return errorResponse('Method Not Allowed', 405);

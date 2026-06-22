@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitDB Worker 本地测试</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #00d4ff; margin-bottom: 20px; }
+        .config {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .config input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 15px 0;
+            background: #0f3460;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-test { background: #00d4ff; color: #fff; }
+        .btn-create { background: #00ff88; color: #000; }
+        .btn-show { background: #ffaa00; color: #000; }
+        .btn-find { background: #9933ff; color: #fff; }
+        .btn-add { background: #ff6699; color: #fff; }
+        .btn-clear { background: #666; color: #fff; }
+        .console {
+            background: #0a0a15;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 500px;
+            max-height: 700px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 8px;
+            border-left: 3px solid #333;
+            background: rgba(255,255,255,0.05);
+        }
+        .log-entry.info { border-left-color: #00d4ff; }
+        .log-entry.success { border-left-color: #00ff88; }
+        .log-entry.error { border-left-color: #ff4444; }
+        .log-entry.request { border-left-color: #ffaa00; }
+        .log-entry.response { border-left-color: #9933ff; }
+        .timestamp { color: #666; font-size: 12px; margin-right: 10px; }
+        .method { color: #00d4ff; font-weight: bold; }
+        .url { color: #00ff88; }
+        .status { color: #ffaa00; }
+        pre { 
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 GitDB Worker 本地测试</h1>
+        
+        <div class="config">
+            <h3>⚙️ 配置</h3>
+            <input type="text" id="workerUrl" placeholder="Worker URL" value="https://gitdb-server.darrenhost.workers.dev" />
+            <input type="text" id="owner" placeholder="GITDB_OWNER" value="DarrenHost" />
+            <input type="text" id="repo" placeholder="GITDB_REPO" value="gitdb" />
+            <input type="password" id="token" placeholder="GITDB_TOKEN (ghp_xxx 或 gitdb_xxx)" />
+            <div>
+                <button class="btn-test" onclick="testHealth()">🔌 测试连接</button>
+                <button class="btn-create" onclick="testCreate()">📦 创建数据库</button>
+                <button class="btn-show" onclick="testShow()">📋 显示列表</button>
+                <button class="btn-add" onclick="testAdd()">➕ 添加记录</button>
+                <button class="btn-find" onclick="testFind()">🔍 查询记录</button>
+                <button class="btn-clear" onclick="clearLog()">🗑️ 清空日志</button>
+            </div>
+        </div>
+
+        <div class="console" id="console">
+            <div class="log-entry info">
+                <span class="timestamp">等待测试...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info', data = null) {
+            const consoleEl = document.getElementById('console');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="timestamp">[${time}]</span>${message}`;
+            
+            if (data) {
+                entry.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            
+            consoleEl.appendChild(entry);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            
+            // 同时打印到浏览器控制台
+            console.log(`[GitDB Test] ${type.toUpperCase()}:`, message, data || '');
+        }
+
+        function getConfig() {
+            return {
+                workerUrl: document.getElementById('workerUrl').value.trim(),
+                owner: document.getElementById('owner').value.trim(),
+                repo: document.getElementById('repo').value.trim(),
+                token: document.getElementById('token').value.trim()
+            };
+        }
+
+        async function api(endpoint, method = 'GET', body = null) {
+            const config = getConfig();
+            const url = `${config.workerUrl}${endpoint}`;
+            
+            log(`→ ${method} ${url}`, 'request', body);
+            
+            // 打印到浏览器控制台（详细调试信息）
+            console.groupCollapsed(`📡 API Request: ${endpoint}`);
+            console.log('URL:', url);
+            console.log('Method:', method);
+            console.log('Headers:', {
+                'Content-Type': 'application/json'
+            });
+            if (body) {
+                console.log('Body:', body);
+            }
+            console.groupEnd();
+            
+            const options = {
+                method,
+                headers: { 'Content-Type': 'application/json' }
+            };
+            
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+            
+            try {
+                const response = await fetch(url, options);
+                const data = await response.json();
+                
+                // 打印响应到浏览器控制台
+                console.groupCollapsed(`📥 API Response: ${endpoint}`);
+                console.log('Status:', response.status);
+                console.log('Headers:', Object.fromEntries(response.headers.entries()));
+                console.log('Data:', data);
+                console.groupEnd();
+                
+                log(`← ${response.status}`, 'response', data);
+                
+                if (!data.success && response.status !== 200) {
+                    throw new Error(data.error || 'Request failed');
+                }
+                
+                return data;
+            } catch (error) {
+                log(`❌ ${error.message}`, 'error');
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+
+        async function testHealth() {
+            try {
+                const result = await api('/health', 'GET');
+                log('✅ Worker 连接成功！', 'success', result);
+            } catch (e) {
+                log('❌ Worker 连接失败', 'error');
+            }
+        }
+
+        async function testCreate() {
+            const config = getConfig();
+            const dbName = `test_${Date.now()}`;
+            
+            log(`📦 创建测试数据库：${dbName}`, 'info');
+            log(`配置信息:`, 'info', {
+                workerUrl: config.workerUrl,
+                owner: config.owner,
+                repo: config.repo,
+                token: config.token ? `${config.token.substring(0, 8)}...` : '未提供'
+            });
+            
+            try {
+                const result = await api('/create', 'POST', {
+                    name: dbName,
+                    description: '测试数据库'
+                });
+                
+                log('✅ 数据库创建成功！', 'success', result);
+                
+                // 自动测试 show
+                log('\n📋 获取数据库列表...', 'info');
+                await testShow();
+                
+                // 保存测试数据库名供后续测试使用
+                window.lastTestDb = dbName;
+                
+            } catch (e) {
+                log('❌ 创建失败', 'error');
+            }
+        }
+
+        async function testShow() {
+            try {
+                const result = await api('/show', 'GET');
+                log(`📋 数据库列表：${result.data?.length || 0} 个`, 'success', result);
+            } catch (e) {
+                log('❌ 获取列表失败', 'error');
+            }
+        }
+
+        async function testAdd() {
+            const dbName = window.lastTestDb;
+            if (!dbName) {
+                log('⚠️ 请先创建数据库', 'error');
+                return;
+            }
+            
+            const testData = {
+                name: '测试用户',
+                email: 'test@example.com',
+                age: 25,
+                createdAt: new Date().toISOString()
+            };
+            
+            log(`➕ 添加记录到 ${dbName}`, 'info', testData);
+            
+            try {
+                const result = await api('/add', 'POST', {
+                    name: dbName,
+                    data: testData
+                });
+                log('✅ 记录添加成功！', 'success', result);
+            } catch (e) {
+                log('❌ 添加失败', 'error');
+            }
+        }
+
+        async function testFind() {
+            const dbName = window.lastTestDb;
+            if (!dbName) {
+                log('⚠️ 请先创建数据库', 'error');
+                return;
+            }
+            
+            log(`🔍 查询 ${dbName} 中的所有记录`, 'info');
+            
+            try {
+                const result = await api('/find', 'POST', {
+                    name: dbName,
+                    query: null
+                });
+                log(`📊 查询结果：${result.data?.returnedCount || 0} 条记录`, 'success', result);
+            } catch (e) {
+                log('❌ 查询失败', 'error');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('console').innerHTML = '';
+            log('日志已清空', 'info');
+        }
+
+        // 页面加载时打印配置信息
+        window.addEventListener('load', () => {
+            log('🧪 GitDB Worker 测试工具已加载', 'success');
+            log('💡 提示：按 F12 打开浏览器控制台查看详细调试信息', 'info');
+            
+            const config = getConfig();
+            console.group('⚙️ 当前配置');
+            console.log('Worker URL:', config.workerUrl);
+            console.log('Owner:', config.owner);
+            console.log('Repo:', config.repo);
+            console.log('Token:', config.token ? `${config.token.substring(0, 8)}... (长度：${config.token.length})` : '未提供');
+            console.groupEnd();
+        });
+    </script>
+</body>
+</html>

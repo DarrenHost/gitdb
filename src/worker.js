@@ -450,24 +450,32 @@ export default {
         // 获取并解混淆 Token
         let token = env.GITDB_TOKEN || CONFIG.GITDB_TOKEN;
         if (!token) {
+            console.error('❌ GITDB_TOKEN not configured');
             return errorResponse('GITDB_TOKEN not configured', 500);
         }
         
         // 只有 gitdb_ 开头的 Token 才需要解混淆
         if (token.startsWith('gitdb_')) {
+            console.log('🔐 检测到混淆 Token (gitdb_)，开始解混淆...');
             try {
                 const mixer = new TokenMixer();
                 token = mixer.unmix(token);
+                console.log('✅ Token 解混淆成功，原始格式:', token.substring(0, 8) + '...');
             } catch (e) {
+                console.error('❌ Token 解混淆失败:', e.message);
                 return errorResponse('Invalid gitdb_ token format: ' + e.message, 500);
             }
+        } else {
+            console.log('🔑 检测到明文 Token:', token.substring(0, 8) + '...');
         }
-        // 其他格式（ghp_, github_pat_ 等）直接使用
         
         // 验证必要配置
         if (!owner || !repo) {
+            console.error('❌ Missing configuration:', { owner: owner || 'empty', repo: repo || 'empty' });
             return errorResponse('Missing GITDB_OWNER or GITDB_REPO configuration', 500);
         }
+        
+        console.log('✅ 配置验证通过:', { owner, repo, branch, dataDir });
         
         // 创建 GitDB 实例
         const db = new GitDBCore(owner, repo, token, branch, dataDir);

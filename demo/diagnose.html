@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitDB Worker 诊断工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #00d4ff;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card h2 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            color: #fff;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #fff;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+            color: #fff;
+        }
+        .result-box {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .success { border-left: 4px solid #00ff88; }
+        .error { border-left: 4px solid #ff4444; }
+        .warning { border-left: 4px solid #ffaa00; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .status.ok { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .status.fail { background: rgba(255, 68, 68, 0.2); color: #ff6b6b; }
+        .checklist { list-style: none; }
+        .checklist li {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .checklist li::before {
+            content: '⬜';
+            font-size: 16px;
+        }
+        .checklist li.checked::before { content: '✅'; }
+        .checklist li.failed::before { content: '❌'; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 GitDB Worker 诊断工具</h1>
+        
+        <div class="card">
+            <h2>📋 配置信息</h2>
+            <div class="form-group">
+                <label>Worker URL</label>
+                <input type="url" id="workerUrl" placeholder="https://gitdb-server.xxx.workers.dev" />
+            </div>
+            <div class="form-group">
+                <label>GITDB_TOKEN (明文或混淆格式)</label>
+                <input type="password" id="token" placeholder="ghp_xxx 或 gitdb_xxx" />
+            </div>
+            <div class="form-group">
+                <label>GITDB_OWNER (GitHub 用户名)</label>
+                <input type="text" id="owner" placeholder="your-username" />
+            </div>
+            <div class="form-group">
+                <label>GITDB_REPO (仓库名称)</label>
+                <input type="text" id="repo" placeholder="your-repo" />
+            </div>
+            <button class="btn btn-primary" onclick="runDiagnostics()">🔍 运行诊断</button>
+            <button class="btn btn-success" onclick="testCreateDb()">📦 测试创建数据库</button>
+        </div>
+
+        <div class="card">
+            <h2>✅ 检查清单</h2>
+            <ul class="checklist" id="checklist">
+                <li id="check-url">Worker URL 格式正确</li>
+                <li id="check-token">Token 格式有效</li>
+                <li id="check-owner">Owner 配置正确</li>
+                <li id="check-repo">Repo 配置正确</li>
+                <li id="check-health">Worker 健康检查</li>
+                <li id="check-token-valid">Token 有效（GitHub API）</li>
+                <li id="check-repo-access">有仓库访问权限</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>📊 诊断结果 <span class="status" id="overallStatus">等待开始</span></h2>
+            <div class="result-box" id="resultBox">
+                <pre id="resultContent">点击"运行诊断"开始检查...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateCheck(id, status) {
+            const el = document.getElementById(id);
+            el.className = status === 'ok' ? 'checked' : (status === 'fail' ? 'failed' : '');
+        }
+
+        function log(message, type = 'info') {
+            const box = document.getElementById('resultContent');
+            const icon = type === 'success' ? '✅' : (type === 'error' ? '❌' : 'ℹ️');
+            box.textContent += `\n${icon} ${message}`;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function runDiagnostics() {
+            const workerUrl = document.getElementById('workerUrl').value.trim();
+            const token = document.getElementById('token').value.trim();
+            const owner = document.getElementById('owner').value.trim();
+            const repo = document.getElementById('repo').value.trim();
+
+            document.getElementById('resultContent').textContent = '开始诊断...\n';
+            document.getElementById('overallStatus').textContent = '诊断中...';
+            document.getElementById('overallStatus').className = 'status';
+
+            // 1. 检查 Worker URL
+            if (!workerUrl || !workerUrl.startsWith('http')) {
+                updateCheck('check-url', 'fail');
+                log('Worker URL 无效', 'error');
+                return;
+            }
+            updateCheck('check-url', 'ok');
+            log('Worker URL 格式正确');
+
+            // 2. 检查 Token
+            if (!token) {
+                updateCheck('check-token', 'fail');
+                log('Token 未提供', 'error');
+                return;
+            }
+            const validPrefixes = ['ghp_', 'gho_', 'ghu_', 'ghs_', 'ghr_', 'github_pat_', 'gitdb_'];
+            const hasValidPrefix = validPrefixes.some(p => token.startsWith(p));
+            if (!hasValidPrefix) {
+                updateCheck('check-token', 'fail');
+                log('Token 格式无效（应以 ghp_, github_pat_ 或 gitdb_ 开头）', 'error');
+                return;
+            }
+            updateCheck('check-token', 'ok');
+            log('Token 格式正确');
+
+            // 3. 检查 Owner
+            if (!owner) {
+                updateCheck('check-owner', 'fail');
+                log('Owner 未提供', 'error');
+                return;
+            }
+            updateCheck('check-owner', 'ok');
+
+            // 4. 检查 Repo
+            if (!repo) {
+                updateCheck('check-repo', 'fail');
+                log('Repo 未提供', 'error');
+                return;
+            }
+            updateCheck('check-repo', 'ok');
+
+            // 5. 健康检查
+            try {
+                const healthRes = await fetch(`${workerUrl}/health`);
+                if (healthRes.ok) {
+                    updateCheck('check-health', 'ok');
+                    log('Worker 健康检查通过', 'success');
+                } else {
+                    updateCheck('check-health', 'fail');
+                    log(`Worker 健康检查失败：${healthRes.status}`, 'error');
+                }
+            } catch (e) {
+                updateCheck('check-health', 'fail');
+                log(`Worker 无法访问：${e.message}`, 'error');
+            }
+
+            // 6. 测试 GitHub API（直接调用，验证 Token）
+            try {
+                const headers = { 'Authorization': `token ${token.startsWith('gitdb_') ? await unmixToken(token) : token}` };
+                const userRes = await fetch('https://api.github.com/user', { headers });
+                if (userRes.ok) {
+                    const userData = await userRes.json();
+                    updateCheck('check-token-valid', 'ok');
+                    log(`Token 有效！GitHub 用户：${userData.login}`, 'success');
+                    
+                    if (userData.login !== owner) {
+                        log(`⚠️ 警告：Token 所有者 (${userData.login}) 与配置的 Owner (${owner}) 不一致`, 'warning');
+                    }
+                } else {
+                    updateCheck('check-token-valid', 'fail');
+                    const err = await userRes.json();
+                    log(`Token 无效：${err.message}`, 'error');
+                }
+            } catch (e) {
+                updateCheck('check-token-valid', 'fail');
+                log(`GitHub API 调用失败：${e.message}`, 'error');
+            }
+
+            // 7. 检查仓库访问权限
+            try {
+                const cleanToken = token.startsWith('gitdb_') ? await unmixToken(token) : token;
+                const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+                    headers: { 'Authorization': `token ${cleanToken}` }
+                });
+                if (repoRes.ok) {
+                    updateCheck('check-repo-access', 'ok');
+                    log(`仓库访问权限正常：${owner}/${repo}`, 'success');
+                } else {
+                    updateCheck('check-repo-access', 'fail');
+                    const err = await repoRes.json();
+                    log(`仓库访问失败：${err.message}`, 'error');
+                    log(`请检查：1) 仓库是否存在 2) Token 是否有 repo 权限`, 'warning');
+                }
+            } catch (e) {
+                updateCheck('check-repo-access', 'fail');
+                log(`仓库检查失败：${e.message}`, 'error');
+            }
+
+            document.getElementById('overallStatus').textContent = '诊断完成';
+            document.getElementById('overallStatus').className = 'status ok';
+            log('\n诊断完成！请检查上方的检查结果。', 'success');
+        }
+
+        async function testCreateDb() {
+            const workerUrl = document.getElementById('workerUrl').value.trim();
+            const dbName = 'test_' + Date.now();
+
+            if (!workerUrl) {
+                log('请先输入 Worker URL', 'error');
+                return;
+            }
+
+            log(`\n测试创建数据库：${dbName}...`);
+
+            try {
+                const res = await fetch(`${workerUrl}/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: dbName })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    log(`✅ 数据库创建成功！`, 'success');
+                    log(JSON.stringify(data, null, 2));
+                    
+                    // 测试删除
+                    log(`\n清理测试数据...`);
+                    await fetch(`${workerUrl}/drop`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: dbName })
+                    });
+                    log(`✅ 测试数据库已删除`, 'success');
+                } else {
+                    log(`❌ 创建失败：${data.error}`, 'error');
+                    log(`\n常见原因：`);
+                    log(`1. Worker 环境变量未配置（GITDB_OWNER/GITDB_REPO/GITDB_TOKEN）`);
+                    log(`2. Token 权限不足（需要 repo 完整权限）`);
+                    log(`3. 仓库不存在或为私有仓库但 Token 无权限`);
+                }
+            } catch (e) {
+                log(`❌ 请求失败：${e.message}`, 'error');
+            }
+        }
+
+        async function unmixToken(mixedToken) {
+            // 简单的 Token 解混淆（与 Worker 相同算法）
+            const CHAR_MAP = {
+                '0': 'a', '1': 'b', '2': 'c', '3': 'd', '4': 'e',
+                '5': 'f', '6': 'g', '7': 'h', '8': 'i', '9': 'j',
+                'a': 'k', 'b': 'l', 'c': 'm', 'd': 'n', 'e': 'o',
+                'f': 'p', 'g': 'q', 'h': 'r', 'i': 's', 'j': 't',
+                'k': 'u', 'l': 'v', 'm': 'w', 'n': 'x', 'o': 'y',
+                'p': 'z', 'q': 'A', 'r': 'B', 's': 'C', 't': 'D',
+                'u': 'E', 'v': 'F', 'w': 'G', 'x': 'H', 'y': 'I',
+                'z': 'J', 'A': 'K', 'B': 'L', 'C': 'M', 'D': 'N',
+                'E': 'O', 'F': 'P', 'G': 'Q', 'H': 'R', 'I': 'S',
+                'J': 'T', 'K': 'U', 'L': 'V', 'M': 'W', 'N': 'X',
+                'O': 'Y', 'P': 'Z', 'Q': '0', 'R': '1', 'S': '2',
+                'T': '3', 'U': '4', 'V': '5', 'W': '6', 'X': '7',
+                'Y': '8', 'Z': '9', '_': '-', '-': '_'
+            };
+            const REVERSE_MAP = {};
+            for (const [k, v] of Object.entries(CHAR_MAP)) REVERSE_MAP[v] = k;
+
+            if (!mixedToken.startsWith('gitdb_')) return mixedToken;
+            
+            const core = mixedToken.slice(8, -4);
+            let original = '';
+            for (const char of core) {
+                original += REVERSE_MAP[char] || char;
+            }
+            return original;
+        }
+    </script>
+</body>
+</html>
